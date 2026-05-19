@@ -2,7 +2,6 @@
   "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build-only",
   "outputDirectory": "dist",
-  "cleanUrls": true,
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
