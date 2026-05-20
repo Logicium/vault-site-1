@@ -115,6 +115,25 @@ export const contentClient = {
   getUpdateStatus: (siteId: string) => request<{ current: string | null; latest: string | null; hasUpdate: boolean; neverChecked?: boolean }>('GET', `/admin/sites/${siteId}/update-status`),
   /** Queue a job that syncs template files into the customer's repo and triggers a redeploy. */
   updateSite: (siteId: string) => request<{ ok: true; jobId: string | number }>('POST', `/admin/sites/${siteId}/update`),
+  /** Force a fresh provisioning run for a stuck site (idempotent — reuses existing repo/project). */
+  reprovisionSite: (siteId: string) => request<{ ok: true; orderId: string }>('POST', `/admin/sites/${siteId}/reprovision`),
+  /** Stripe diagnostic: session payment status, payment intent, recent webhook events. */
+  getBillingStatus: (siteId: string) => request<{
+    orderId: string
+    orderStatus: string
+    stripeSessionId: string | null
+    stripeCustomerId: string | null
+    failureReason: string | null
+    stripeConfigured?: boolean
+    session?: { id: string; paymentStatus: string | null; status: string | null; amountTotal: number | null; currency: string | null; customerEmail: string | null; createdAt: string } | null
+    paymentIntent?: { id: string; status: string; amount: number; amountReceived: number; lastPaymentError: string | null } | null
+    webhookEvents?: Array<{ id: string; type: string; created: number }>
+    canResolve?: boolean
+    notes?: string | null
+    error?: string
+  }>('GET', `/admin/sites/${siteId}/billing-status`),
+  /** When Stripe confirms paid but the order never advanced, flip it and enqueue. */
+  resolveBilling: (siteId: string) => request<{ ok: true; orderId: string; orderStatus: string }>('POST', `/admin/sites/${siteId}/resolve-billing`),
   /** URL of the cached screenshot PNG for a site. Pass fresh=true to force recapture. */
   screenshotUrl: (siteId: string, fresh = false) => `${PLATFORM_API}/admin/sites/${siteId}/screenshot${fresh ? '?fresh=1' : ''}`,
 
