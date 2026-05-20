@@ -13,6 +13,18 @@ const updateChecking = ref<Record<string, boolean>>({})
 const updating = ref<Record<string, boolean>>({})
 const updateMsg = ref<Record<string, string>>({})
 
+// Reprovision (force fresh provisioning run for stuck sites)
+const reprovisioning = ref<Record<string, boolean>>({})
+const reprovisionMsg = ref<Record<string, string>>({})
+
+// Billing diagnostic (Stripe webhook resolution)
+type BillingInfo = Awaited<ReturnType<typeof contentClient.getBillingStatus>>
+const billing = ref<Record<string, BillingInfo | null>>({})
+const billingLoading = ref<Record<string, boolean>>({})
+const billingOpen = ref<Record<string, boolean>>({})
+const billingMsg = ref<Record<string, string>>({})
+const resolvingBilling = ref<Record<string, boolean>>({})
+
 // Per-site screenshot blob URLs. We load them via fetch (adding the auth header)
 // so the guarded endpoint accepts the request. Blob URLs are cached in memory;
 // we also store the server URL as the src key so we only fetch once per load.
@@ -24,7 +36,12 @@ async function loadScreenshot(siteId: string) {
   try {
     const url = contentClient.screenshotUrl(siteId)
     const token = getStoredToken()
-    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    // cache: 'no-store' bypasses the HTTP cache so a page refresh after a
+    // reprovision (new Vercel URL) actually gets the new screenshot.
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
     if (!res.ok) { screenshotErr.value[siteId] = true; return }
     const blob = await res.blob()
     // Revoke any previous blob URL to avoid memory leaks
@@ -42,7 +59,10 @@ async function refreshScreenshot(siteId: string) {
   try {
     const url = contentClient.screenshotUrl(siteId, true)
     const token = getStoredToken()
-    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
     if (!res.ok) { screenshotErr.value[siteId] = true; return }
     const blob = await res.blob()
     const prev = screenshotBlob.value[siteId]
@@ -89,6 +109,83 @@ async function updateNow(siteId: string) {
   } finally {
     updating.value[siteId] = false
   }
+}
+
+async function reprovision(siteId: string) {
+  reprovisioning.value[siteId] = true
+  reprovisionMsg.value[siteId] = ''
+  try {
+    const r = await contentClient.reprovisionSite(siteId)
+    reprovisionMsg.value[siteId] = `Reprovisioning queued (order ${r.orderId.slice(0, 8)}\u2026)`
+    // Drop the current screenshot so the placeholder shows while the new deploy runs,
+    // and schedule a refresh after a reasonable build window. The backend will
+    // re-resolve the Vercel URL and invalidate any stale cache key automatically.
+    const prev = screenshotBlob.value[siteId]
+    if (prev) URL.revokeObjectURL(prev)
+    screenshotBlob.value[siteId] = null
+    setTimeout(() => { void refreshScreenshot(siteId) }, 90_000)
+  } catch (e) {
+    reprovisionMsg.value[siteId] = e instanceof Error ? e.message : String(e)
+  } finally {
+    reprovisioning.value[siteId] = false
+  }
+}
+
+async function toggleBilling(siteId: string) {
+  billingOpen.value[siteId] = !billingOpen.value[siteId]
+  if (!billingOpen.value[siteId]) return
+  if (billing.value[siteId]) return
+  billingLoading.value[siteId] = true
+  billingMsg.value[siteId] = ''
+  try {
+    billing.value[siteId] = await contentClient.getBillingStatus(siteId)
+  } catch (e) {
+    billingMsg.value[siteId] = e instanceof Error ? e.message : String(e)
+  } finally {
+    billingLoading.value[siteId] = false
+  }
+}
+
+async function refreshBilling(siteId: string) {
+  billingLoading.value[siteId] = true
+  billingMsg.value[siteId] = ''
+  try {
+    billing.value[siteId] = await contentClient.getBillingStatus(siteId)
+  } catch (e) {
+    billingMsg.value[siteId] = e instanceof Error ? e.message : String(e)
+  } finally {
+    billingLoading.value[siteId] = false
+  }
+}
+
+async function resolveBilling(siteId: string) {
+  resolvingBilling.value[siteId] = true
+  billingMsg.value[siteId] = ''
+  try {
+    const r = await contentClient.resolveBilling(siteId)
+    billingMsg.value[siteId] = `Marked paid (${r.orderStatus}) \u2014 provisioning queued`
+    // Refresh diagnostics so the canResolve flag clears
+    billing.value[siteId] = await contentClient.getBillingStatus(siteId).catch(() => billing.value[siteId] ?? null)
+  } catch (e) {
+    billingMsg.value[siteId] = e instanceof Error ? e.message : String(e)
+  } finally {
+    resolvingBilling.value[siteId] = false
+  }
+}
+
+function formatMoney(amount: number | null | undefined, currency: string | null | undefined) {
+  if (amount == null || !currency) return ''
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase() }).format(amount / 100) }
+  catch { return `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}` }
+}
+
+function formatTimestamp(unixSec: number) {
+  try { return new Date(unixSec * 1000).toLocaleString() } catch { return String(unixSec) }
+}
+
+function isStuck(status: string) {
+  const s = status.toLowerCase()
+  return s === 'provisioning' || s === 'failed' || s === 'pending' || s === 'draft'
 }
 
 onMounted(async () => {
@@ -214,10 +311,71 @@ const liveCount = computed(() => sites.value.filter(s => liveUrl(s)).length)
               :title="'Refresh screenshot'"
               @click="refreshScreenshot(s.id)"
             >⟳ Screenshot</button>
+            <button
+              v-if="isStuck(s.status)"
+              type="button" class="adm-btn adm-btn--sm adm-btn--primary"
+              :disabled="reprovisioning[s.id]"
+              :title="'Force a fresh provisioning run (idempotent)'"
+              @click="reprovision(s.id)"
+            >{{ reprovisioning[s.id] ? 'Queuing…' : 'Reprovision' }}</button>
+            <button
+              type="button" class="adm-btn adm-btn--sm adm-btn--ghost"
+              :title="'Check Stripe payment + webhook status'"
+              @click="toggleBilling(s.id)"
+            >{{ billingOpen[s.id] ? '× Billing' : 'Check billing' }}</button>
           </div>
 
           <p v-if="redeployMsg[s.id]" class="adm-muted site-card__msg">{{ redeployMsg[s.id] }}</p>
           <p v-if="updateMsg[s.id]" class="adm-muted site-card__msg">{{ updateMsg[s.id] }}</p>
+          <p v-if="reprovisionMsg[s.id]" class="adm-muted site-card__msg">{{ reprovisionMsg[s.id] }}</p>
+
+          <div v-if="billingOpen[s.id]" class="site-card__billing">
+            <div class="site-card__billing-head">
+              <strong>Billing diagnostic</strong>
+              <button type="button" class="adm-btn adm-btn--sm adm-btn--ghost" :disabled="billingLoading[s.id]" @click="refreshBilling(s.id)">⟳</button>
+            </div>
+            <p v-if="billingLoading[s.id]" class="adm-muted">Loading Stripe data…</p>
+            <p v-if="billingMsg[s.id]" class="adm-muted">{{ billingMsg[s.id] }}</p>
+            <template v-if="billing[s.id]">
+              <dl class="bill-grid">
+                <dt>Order status</dt><dd>{{ billing[s.id]!.orderStatus }}</dd>
+                <dt>Stripe session</dt><dd>{{ billing[s.id]!.stripeSessionId || '—' }}</dd>
+                <template v-if="billing[s.id]!.session">
+                  <dt>Payment status</dt><dd>{{ billing[s.id]!.session!.paymentStatus || '—' }}</dd>
+                  <dt>Amount</dt><dd>{{ formatMoney(billing[s.id]!.session!.amountTotal, billing[s.id]!.session!.currency) || '—' }}</dd>
+                  <dt>Created</dt><dd>{{ billing[s.id]!.session!.createdAt }}</dd>
+                </template>
+                <template v-if="billing[s.id]!.paymentIntent">
+                  <dt>Payment intent</dt><dd>{{ billing[s.id]!.paymentIntent!.status }}</dd>
+                  <dt v-if="billing[s.id]!.paymentIntent!.lastPaymentError">Last error</dt>
+                  <dd v-if="billing[s.id]!.paymentIntent!.lastPaymentError" class="adm-msg-err">
+                    {{ billing[s.id]!.paymentIntent!.lastPaymentError }}
+                  </dd>
+                </template>
+                <dt>Webhook events</dt>
+                <dd>
+                  <template v-if="billing[s.id]!.webhookEvents?.length">
+                    <div v-for="ev in billing[s.id]!.webhookEvents" :key="ev.id" class="adm-mono">
+                      {{ ev.type }} · {{ formatTimestamp(ev.created) }}
+                    </div>
+                  </template>
+                  <span v-else class="adm-msg-warn">No checkout.session.completed event found — webhook likely never fired.</span>
+                </dd>
+                <template v-if="billing[s.id]!.failureReason">
+                  <dt>Failure</dt><dd class="adm-msg-err">{{ billing[s.id]!.failureReason }}</dd>
+                </template>
+              </dl>
+              <p v-if="billing[s.id]!.notes" class="adm-msg-warn">{{ billing[s.id]!.notes }}</p>
+              <p v-if="billing[s.id]!.error" class="adm-msg-err">{{ billing[s.id]!.error }}</p>
+              <div v-if="billing[s.id]!.canResolve" class="site-card__billing-actions">
+                <button
+                  type="button" class="adm-btn adm-btn--sm adm-btn--primary"
+                  :disabled="resolvingBilling[s.id]"
+                  @click="resolveBilling(s.id)"
+                >{{ resolvingBilling[s.id] ? 'Resolving…' : 'Mark paid & provision' }}</button>
+              </div>
+            </template>
+          </div>
         </div>
       </article>
     </div>
@@ -321,4 +479,29 @@ const liveCount = computed(() => sites.value.filter(s => liveUrl(s)).length)
   animation: sc-spin 900ms linear infinite;
 }
 @keyframes sc-spin { to { transform: rotate(360deg); } }
+
+.site-card__billing {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--adm-surface-2);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  font-size: 0.82rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.site-card__billing-head {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.site-card__billing-actions {
+  display: flex; justify-content: flex-end; margin-top: 0.4rem;
+}
+.bill-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.8rem;
+  margin: 0;
+}
+.bill-grid dt { color: var(--adm-text-muted); }
+.bill-grid dd { margin: 0; word-break: break-all; }
+.adm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
 </style>
