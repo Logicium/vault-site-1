@@ -19,6 +19,7 @@ export const adminRoutes: RouteRecordRaw[] = [
       { path: 'analytics', name: 'admin-analytics', component: () => import('./views/AnalyticsView.vue') },
       { path: 'domain', name: 'admin-domain', component: () => import('./views/DomainView.vue') },
       { path: 'billing', name: 'admin-billing', component: () => import('./views/BillingView.vue') },
+      { path: 'account', name: 'admin-account', component: () => import('./views/AccountView.vue') },
     ],
   },
 ]
