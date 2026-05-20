@@ -41,50 +41,76 @@ async function submit() {
 </script>
 
 <template>
-  <section class="login">
-    <h1>Sign in</h1>
+  <section class="login adm-page">
+    <div class="adm-card login__card">
+      <header class="login__head">
+        <span class="adm-eyebrow">Apotome</span>
+        <h1 class="adm-title login__title">Sign in</h1>
+        <p class="adm-subtitle">Manage your sites, content, and reviews.</p>
+      </header>
 
-    <nav class="tabs">
-      <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">Password</button>
-      <button type="button" :class="{ active: mode === 'register' }" @click="mode = 'register'">Create account</button>
-      <button type="button" :class="{ active: mode === 'magic' }" @click="mode = 'magic'">Email link</button>
-    </nav>
+      <nav class="login__tabs" role="tablist">
+        <button type="button" :class="{ 'is-active': mode === 'login' }" @click="mode = 'login'">Password</button>
+        <button type="button" :class="{ 'is-active': mode === 'register' }" @click="mode = 'register'">Create account</button>
+        <button type="button" :class="{ 'is-active': mode === 'magic' }" @click="mode = 'magic'">Email link</button>
+      </nav>
 
-    <form v-if="mode !== 'magic' || !sent" @submit.prevent="submit">
-      <input v-model="email" type="email" required placeholder="you@example.com" autocomplete="email" />
-      <input
-        v-if="mode === 'register'"
-        v-model="name"
-        type="text"
-        placeholder="Your name (optional)"
-        autocomplete="name"
-      />
-      <input
-        v-if="mode !== 'magic'"
-        v-model="password"
-        type="password"
-        required
-        minlength="8"
-        placeholder="Password (min 8 chars)"
-        :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
-      />
-      <button type="submit" :disabled="busy">
-        {{ busy ? 'Working…' : mode === 'magic' ? 'Email me a link' : mode === 'register' ? 'Create account' : 'Sign in' }}
-      </button>
-      <p v-if="error" class="err">{{ error }}</p>
-    </form>
-    <p v-else class="ok">Check <strong>{{ email }}</strong> for your sign-in link.</p>
+      <form v-if="mode !== 'magic' || !sent" class="login__form" @submit.prevent="submit">
+        <label class="adm-label">
+          Email
+          <input v-model="email" class="adm-input" type="email" required placeholder="you@example.com" autocomplete="email" />
+        </label>
+        <label v-if="mode === 'register'" class="adm-label">
+          Name <span class="adm-subtle">(optional)</span>
+          <input v-model="name" class="adm-input" type="text" autocomplete="name" />
+        </label>
+        <label v-if="mode !== 'magic'" class="adm-label">
+          Password
+          <input
+            v-model="password"
+            class="adm-input"
+            type="password"
+            required
+            minlength="8"
+            placeholder="Min 8 characters"
+            :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
+          />
+        </label>
+        <button type="submit" class="adm-btn adm-btn--primary" :disabled="busy">
+          {{ busy ? 'Working…' : mode === 'magic' ? 'Email me a link' : mode === 'register' ? 'Create account' : 'Sign in' }}
+        </button>
+        <p v-if="error" class="adm-msg-err">{{ error }}</p>
+      </form>
+      <p v-else class="adm-msg-ok login__sent">
+        Check <strong>{{ email }}</strong> for your sign-in link.
+      </p>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.login { max-width: 420px; margin: 4rem auto; }
-.tabs { display: flex; gap: 0; margin: 1rem 0; border-bottom: 1px solid #2a2a2c; }
-.tabs button { flex: 1; padding: 0.5rem; background: transparent; border: 0; border-bottom: 2px solid transparent; color: #aaa; cursor: pointer; font: inherit; }
-.tabs button.active { color: #fff; border-bottom-color: #f5f5f5; }
-form { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
-input, button { padding: 0.6rem 0.8rem; font: inherit; border-radius: 4px; border: 1px solid #444; background: #1a1a1c; color: inherit; }
-form > button { background: #f5f5f5; color: #0f0f10; cursor: pointer; font-weight: 600; }
-.err { color: #ff8080; }
-.ok { color: #80ff80; margin-top: 1rem; }
+.login { display: flex; align-items: flex-start; justify-content: center; min-height: 60vh; padding-top: 3rem; }
+.login__card { max-width: 440px; width: 100%; padding: 2rem 2.1rem; }
+.login__head { margin-bottom: 1.25rem; }
+.login__title { margin-top: 0.3rem; }
+.login__tabs {
+  display: flex; gap: 0;
+  margin: 1rem 0 1.25rem;
+  border-bottom: 1px solid var(--adm-border);
+}
+.login__tabs button {
+  flex: 1; padding: 0.55rem 0.4rem;
+  background: transparent; border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--adm-text-muted);
+  cursor: pointer; font: inherit;
+  font-size: 0.85rem; letter-spacing: 0.04em;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.login__tabs button.is-active {
+  color: var(--adm-text);
+  border-bottom-color: var(--adm-accent);
+}
+.login__form { display: flex; flex-direction: column; gap: 0.85rem; }
+.login__sent { margin-top: 1rem; }
 </style>
