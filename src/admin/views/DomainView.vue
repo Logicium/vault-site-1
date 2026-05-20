@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { contentClient } from '../../platform/contentClient'
+import { useActiveSiteStore } from '../../platform/activeSiteStore'
 
-const sites = ref<Awaited<ReturnType<typeof contentClient.listSites>>>([])
-const siteId = ref('')
+const activeSites = useActiveSiteStore()
+const siteId = computed(() => activeSites.activeId)
 const domain = ref('')
 const dns = ref<{ instructions: Array<{ type: string; name: string; value: string; note: string }> } | null>(null)
 const verifyStatus = ref('')
 const error = ref<string | null>(null)
 
 async function loadCurrent() {
-  if (!siteId.value) return
+  if (!siteId.value) { domain.value = ''; dns.value = null; return }
   try {
     const r = await contentClient.getDomain(siteId.value)
     if (r.domain) domain.value = r.domain
@@ -28,49 +29,62 @@ async function verify() {
     verifyStatus.value = r.ok ? 'Verified.' : 'Not yet — DNS may need more time.'
   } catch (e) { error.value = e instanceof Error ? e.message : String(e) }
 }
-onMounted(async () => {
-  sites.value = await contentClient.listSites()
-  if (sites.value[0]) siteId.value = sites.value[0].id
-})
+onMounted(loadCurrent)
 watch(siteId, loadCurrent)
 </script>
 
 <template>
-  <section>
-    <h1>Domain</h1>
-    <label>Site:
-      <select v-model="siteId">
-        <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.slug }}</option>
-      </select>
-    </label>
-    <form @submit.prevent="request">
-      <input v-model="domain" placeholder="www.yoursite.com" />
-      <button type="submit">Attach domain</button>
-    </form>
-    <div v-if="dns">
-      <h2>DNS records</h2>
-      <table>
-        <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>Note</th></tr></thead>
-        <tbody>
-          <tr v-for="(r, i) in dns.instructions" :key="i">
-            <td>{{ r.type }}</td><td>{{ r.name }}</td><td>{{ r.value }}</td><td>{{ r.note }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <button type="button" @click="verify">I've added the records — verify</button>
-      <p v-if="verifyStatus" class="ok">{{ verifyStatus }}</p>
+  <section class="adm-page">
+    <header class="adm-page__head">
+      <div>
+        <span class="adm-eyebrow">Setup</span>
+        <h1 class="adm-title">Domain</h1>
+        <p class="adm-subtitle">Point your own domain at this site — we handle the SSL.</p>
+      </div>
+    </header>
+
+    <div v-if="!siteId" class="adm-empty">
+      <p class="adm-empty__body">Select a site from the header to attach a domain.</p>
     </div>
-    <p v-if="error" class="err">{{ error }}</p>
+    <template v-else>
+      <div class="adm-card">
+        <h3 class="adm-card__title">Attach a domain</h3>
+        <p class="adm-card__sub">Use the full hostname — e.g. <code>www.yoursite.com</code>.</p>
+        <form class="dn-form" @submit.prevent="request">
+          <input v-model="domain" class="adm-input" placeholder="www.yoursite.com" />
+          <button type="submit" class="adm-btn adm-btn--primary">Attach domain</button>
+        </form>
+      </div>
+
+      <div v-if="dns" class="adm-card">
+        <h3 class="adm-card__title">DNS records</h3>
+        <p class="adm-card__sub">Add these at your registrar, then come back and verify.</p>
+        <div class="dn-table-wrap">
+          <table class="adm-table dn-table">
+            <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr v-for="(r, i) in dns.instructions" :key="i">
+                <td><span class="adm-badge">{{ r.type }}</span></td>
+                <td class="dn-mono">{{ r.name }}</td>
+                <td class="dn-mono">{{ r.value }}</td>
+                <td class="adm-muted">{{ r.note }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="adm-btn adm-btn--primary" @click="verify">I’ve added the records — verify</button>
+        <p v-if="verifyStatus" class="adm-msg-ok">{{ verifyStatus }}</p>
+      </div>
+      <p v-if="error" class="adm-msg-err">{{ error }}</p>
+    </template>
   </section>
 </template>
 
 <style scoped>
-label { display: block; margin: 1rem 0; }
-select, input, button { padding: 0.4rem 0.6rem; background: #1a1a1c; color: inherit; border: 1px solid #444; border-radius: 4px; font: inherit; }
-form { display: flex; gap: 0.5rem; max-width: 480px; }
-button { background: #f5f5f5; color: #0f0f10; cursor: pointer; font-weight: 500; }
-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-th, td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #2a2a2c; text-align: left; font-family: ui-monospace, monospace; font-size: 0.85rem; }
-.ok { color: #80ff80; }
-.err { color: #ff8080; }
+.dn-form { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.dn-form .adm-input { flex: 1; min-width: 220px; }
+.dn-table-wrap { overflow-x: auto; margin: 0.4rem 0 1rem; }
+.dn-table { min-width: 540px; }
+.dn-mono { font-family: var(--adm-font-mono); font-size: 0.82rem; word-break: break-all; }
+code { font-family: var(--adm-font-mono); color: var(--adm-accent); }
 </style>
