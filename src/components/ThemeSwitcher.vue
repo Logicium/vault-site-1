@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { ChevronDown, Settings, Copy, Check, Download, CornerDownRight, AlignLeft, AlignCenter, Palette, LayoutTemplate, LayoutGrid, Globe, Code2 } from 'lucide-vue-next'
+import { RouterLink } from 'vue-router'
+import { ChevronDown, Settings, Copy, Check, Download, CornerDownRight, AlignLeft, AlignCenter, Palette, LayoutTemplate, LayoutGrid, Globe, Code2, User } from 'lucide-vue-next'
 import { useSiteTheme } from '../composables/useSiteTheme'
 import { useSectionFlash } from '../composables/useSectionFlash'
+import { useAdminAuthStore } from '../platform/adminAuthStore'
 import { THEME_LIST } from '../themes'
 import { SWATCH_LIST } from '../themes/swatches'
-import { SWATCH_GROUP_LABELS } from '../themes/tokens'
+import { SWATCH_GROUP_LABELS, type SwatchGroup } from '../themes/tokens'
+
+const auth = useAdminAuthStore()
+
+// Group swatches by their `group` field so the picker renders sections
+// (Neutral / Earth / Warm / Bold / Dark / Neon) instead of one flat grid.
+const GROUP_ORDER: SwatchGroup[] = ['neutral', 'earth', 'warm', 'bold', 'dark', 'neon']
+const swatchGroups = computed(() => {
+  return GROUP_ORDER
+    .map(g => ({ group: g, label: SWATCH_GROUP_LABELS[g], items: SWATCH_LIST.filter(s => s.group === g) }))
+    .filter(g => g.items.length > 0)
+})
 
 const {
   themeName, swatchName, variant,
@@ -35,10 +48,10 @@ const REVIEWS_STYLES = ['1', '2', '3', '4', '5'] as const
 const REVIEWS_STYLE_LABELS: Record<string, string> = { '1': 'Default', '2': 'Spotlight', '3': 'Carousel', '4': 'Wall', '5': 'Ticker' }
 const SUBHERO_STYLES = ['1', '2', '3', '4', '5'] as const
 const SUBHERO_STYLE_LABELS: Record<string, string> = { '1': 'Compact', '2': 'Banner', '3': 'Centered', '4': 'Broadsheet', '5': 'Split' }
-const SITE_STYLES = ['1', '2', '3', '4', '5'] as const
-// vault = retail: Card layout
-const SITE_STYLE_LABEL = 'Card layout'
-const SITE_STYLE_LABELS: Record<string, string> = { '1': 'Editorial', '2': 'Lookbook', '3': 'Catalog', '4': 'Stack', '5': 'Carousel' }
+const SITE_STYLES = ['1', '2', '3'] as const
+// project = wizard: Site style
+const SITE_STYLE_LABEL = 'Site style'
+const SITE_STYLE_LABELS: Record<string, string> = { '1': 'Default', '2': 'Alt', '3': 'Bold' }
 
 type Tab = 'theme' | 'style' | 'sections' | 'global' | 'config'
 const TAB_STORAGE_KEY = 'ap-switcher-tab'
@@ -61,11 +74,11 @@ function toggle() { open.value = !open.value }
 const { goto } = useSectionFlash()
 const sectionTargets = {
   hero:      { selectors: ['.ap-hero'],                                  route: '/' },
-  subhero:   { selectors: ['.ap-subhero'],                               route: '/shop' },
+  subhero:   { selectors: ['.ap-subhero'],                               route: '/contact' },
   footer:    { selectors: ['.ap-footer'],                                route: '/' },
-  site:      { selectors: ['.ap-products', '.ap-categories'], route: '/shop' },
-  contact:   { selectors: ['.ap-contact'],                               route: '/visit' },
-  hours:     { selectors: ['.ap-hours'],                                 route: '/visit' },
+  site:      { selectors: ['.wiz', '.ap-section'], route: '/wizard' },
+  contact:   { selectors: ['.ap-contact'],                               route: '/contact' },
+  hours:     { selectors: ['.ap-hours'],                                 route: '/contact' },
   gallery:   { selectors: ['.ap-gallery'],                               route: '/' },
   reviews:   { selectors: ['.ap-reviews'],                               route: '/' },
 } as const
@@ -225,6 +238,16 @@ watch(open, (v) => {
       <div ref="panelEl" class="ap-switcher__panel-wrap">
         <div class="ap-switcher__head">
           <span class="ap-switcher__title">Site settings</span>
+          <RouterLink
+            v-if="auth.owner"
+            to="/admin/account"
+            class="ap-switcher__account"
+            :title="`Signed in as ${auth.owner.email}`"
+            @click="toggle"
+          >
+            <User :size="14" />
+            <span>Account</span>
+          </RouterLink>
           <button type="button" class="ap-switcher__close" @click="toggle" aria-label="Close">
             <ChevronDown :size="18" />
           </button>
@@ -254,22 +277,25 @@ watch(open, (v) => {
           </div>
           <div class="ap-switcher__span">
             <p class="ap-eyebrow">Swatch</p>
-            <div class="ap-switcher__swatch-grid">
-              <button
-                v-for="s in SWATCH_LIST"
-                :key="s.name"
-                type="button"
-                class="ap-switcher__swatch-card"
-                :class="{ 'is-active': swatchName === s.name }"
-                :title="`${s.label} · ${SWATCH_GROUP_LABELS[s.group]}`"
-                @click="setSwatch(s.name)"
-              >
-                <span class="ap-switcher__swatch-tile" :data-group="s.group">
-                  <span class="ap-switcher__swatch-chip" :style="{ background: s.primary }" />
-                  <span class="ap-switcher__swatch-chip" :style="{ background: s.accent }" />
-                </span>
-                <span class="ap-switcher__swatch-name">{{ s.label }}</span>
-              </button>
+            <div class="ap-switcher__swatch-all">
+              <template v-for="grp in swatchGroups" :key="grp.group">
+                <span class="ap-switcher__group-label">{{ grp.label }}</span>
+                <button
+                  v-for="s in grp.items"
+                  :key="s.name"
+                  type="button"
+                  class="ap-switcher__swatch-card"
+                  :class="{ 'is-active': swatchName === s.name }"
+                  :title="`${s.label} · ${grp.label}`"
+                  @click="setSwatch(s.name)"
+                >
+                  <span class="ap-switcher__swatch-tile">
+                    <span class="ap-switcher__swatch-chip" :style="{ background: s.primary }" />
+                    <span class="ap-switcher__swatch-chip" :style="{ background: s.accent }" />
+                  </span>
+                  <span class="ap-switcher__swatch-name">{{ s.label }}</span>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -497,15 +523,14 @@ watch(open, (v) => {
 }
 .ap-switcher__pill-icon {
   margin-left: auto;
-  display: inline-flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; border-radius: 50%;
   background: color-mix(in srgb, var(--ap-ink) 8%, transparent);
   color: var(--ap-ink);
-  line-height: 0;
   flex-shrink: 0;
   transition: background 160ms ease;
 }
-.ap-switcher__pill-icon :deep(svg) { display: block; }
+.ap-switcher__pill-icon :deep(svg) { display: block; width: 16px; height: 16px; flex-shrink: 0; }
 .ap-switcher__pill:hover .ap-switcher__pill-icon { background: color-mix(in srgb, var(--ap-ink) 14%, transparent); }
 
 /* ── Expand region ─ height transitions in sync with the pill leaving layout ─ */
@@ -563,9 +588,26 @@ watch(open, (v) => {
   width: 32px; height: 32px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--ap-ink);
-  line-height: 0;
   flex-shrink: 0;
   transition: background 160ms ease, color 160ms ease, transform 240ms ease;
+}
+.ap-switcher__account {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  margin-left: auto; margin-right: 0.4rem;
+  background: color-mix(in srgb, var(--ap-primary) 12%, transparent);
+  color: var(--ap-primary);
+  border: 1px solid color-mix(in srgb, var(--ap-primary) 35%, transparent);
+  border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.ap-switcher__account:hover {
+  background: var(--ap-primary);
+  color: var(--ap-surface);
+  border-color: var(--ap-primary);
 }
 .ap-switcher__close :deep(svg) { display: block; margin: 0; }
 .ap-switcher__close:hover {
@@ -659,28 +701,40 @@ watch(open, (v) => {
 }
 .ap-switcher__swatch.is-active { outline: 2px solid; outline-offset: 2px; }
 
-/* ── Swatch cards ──
-   Each card is a perfectly square ghost-outlined tile. Inside: two color
-   chips (primary + accent) whose shape follows the active theme via
-   var(--ap-radius) — square themes get square chips, rounded themes get
-   pill-rounded chips. Group is encoded as a thin colored accent strip
-   along the bottom edge. Name sits centered below in lowercase. */
-.ap-switcher__swatch-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
-  gap: 0.5rem;
+/* ── Swatch cards (flat inline wrapping layout) ──
+   All groups and their swatches live in a single flex-wrap row.
+   Group labels are inline flex items acting as visual separators.
+   Each swatch card is a compact chip with two color dots + readable label. */
+.ap-switcher__swatch-all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
   margin-top: 0.4rem;
 }
+.ap-switcher__group-label {
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ap-ink) 55%, transparent);
+  background: color-mix(in srgb, var(--ap-ink) 8%, transparent);
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 .ap-switcher__swatch-card {
-  position: relative;
-  display: flex; flex-direction: column;
-  aspect-ratio: 1 / 1;
-  padding: 0.4rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.55rem;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--ap-line) 75%, transparent);
   border-radius: var(--ap-radius, 6px);
   cursor: pointer;
-  text-align: center;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 .ap-switcher__swatch-card:hover {
@@ -692,50 +746,24 @@ watch(open, (v) => {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ap-primary) 28%, transparent);
 }
 .ap-switcher__swatch-tile {
-  position: relative;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  place-items: center;
-  gap: 4px;
-  flex: 1; min-height: 0; min-width: 0;
-  padding-bottom: 5px; /* room for group accent strip */
+  display: flex;
+  gap: 3px;
 }
-.ap-switcher__swatch-tile::after {
-  content: '';
-  position: absolute; bottom: 0; left: 10%; right: 10%;
-  height: 2px;
-  background: var(--ap-group-color, transparent);
-  border-radius: 2px;
-}
-.ap-switcher__swatch-tile[data-group="neon"]   { --ap-group-color: #00B86B; }
-.ap-switcher__swatch-tile[data-group="dark"]   { --ap-group-color: #1A1A1A; }
-.ap-switcher__swatch-tile[data-group="bold"]   { --ap-group-color: #E0005E; }
-.ap-switcher__swatch-tile[data-group="warm"]   { --ap-group-color: #D14628; }
-.ap-switcher__swatch-tile[data-group="earth"]  { --ap-group-color: #1F5132; }
-.ap-switcher__swatch-tile[data-group="neutral"]{ --ap-group-color: color-mix(in srgb, var(--ap-ink) 40%, transparent); }
 .ap-switcher__swatch-chip {
-  /* Perfect square/circle, sized to fit BOTH the cell width and the
-     tile height. Browsers honor aspect-ratio with conflicting size
-     constraints by shrinking the box while preserving 1:1, so giving
-     both max-width and max-height yields side = min(cellW, tileH). */
   display: block;
-  aspect-ratio: 1 / 1;
-  max-width: 100%;
-  max-height: 100%;
-  width: 100%;
+  width: 16px; height: 16px;
   border-radius: var(--ap-radius, 4px);
   border: 1px solid color-mix(in srgb, var(--ap-ink) 12%, transparent);
+  flex-shrink: 0;
 }
 [data-theme='vibrant'] .ap-switcher__swatch-chip { border-radius: 50%; }
 .ap-switcher__swatch-name {
-  margin-top: 0.3rem;
-  font-size: 0.68rem; font-weight: 500;
-  color: var(--ap-ink); line-height: 1.15;
+  font-size: 0.67rem; font-weight: 500;
+  color: var(--ap-ink);
+  line-height: 1;
   text-transform: lowercase;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
 .ap-switcher__hint {
   margin: 0.25rem 0 0.6rem; font-size: 0.78rem;
   color: var(--ap-ink-muted);
