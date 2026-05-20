@@ -4,12 +4,21 @@
  */
 import { PLATFORM_API, PLATFORM_SLUG } from './config'
 
+const SESSION_KEY = 'archetype_session'
+export function getStoredToken(): string | null { try { return localStorage.getItem(SESSION_KEY) } catch { return null } }
+export function storeSessionToken(t: string) { try { localStorage.setItem(SESSION_KEY, t) } catch {} }
+export function clearSessionToken() { try { localStorage.removeItem(SESSION_KEY) } catch {} }
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   if (!PLATFORM_API) throw new Error('VITE_CONTENT_API not configured')
+  const token = getStoredToken()
+  const headers: Record<string, string> = {}
+  if (body) headers['Content-Type'] = 'application/json'
+  if (token) headers['Authorization'] = `Bearer ${token}`
   const res = await fetch(`${PLATFORM_API}${path}`, {
     method,
     credentials: 'include',
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
@@ -47,14 +56,28 @@ export const contentClient = {
   // --- Auth ---
   requestMagicLink: (email: string, name?: string) =>
     request<{ ok: true }>('POST', `/auth/request-link`, { email, name }),
-  passwordRegister: (email: string, password: string, name?: string) =>
-    request<{ ok: true; owner: { id: string; email: string; name?: string } }>('POST', `/auth/register`, { email, password, name }),
-  passwordLogin: (email: string, password: string) =>
-    request<{ ok: true; owner: { id: string; email: string; name?: string } }>('POST', `/auth/login`, { email, password }),
+  verifyMagicToken: async (token: string) => {
+    const data = await request<{ ok: true; sessionToken: string; owner: { id: string; email: string; name?: string } }>('GET', `/auth/callback?token=${encodeURIComponent(token)}`)
+    if (data.sessionToken) storeSessionToken(data.sessionToken)
+    return data
+  },
+  passwordRegister: async (email: string, password: string, name?: string) => {
+    const data = await request<{ ok: true; sessionToken: string; owner: { id: string; email: string; name?: string } }>('POST', `/auth/register`, { email, password, name })
+    if (data.sessionToken) storeSessionToken(data.sessionToken)
+    return data
+  },
+  passwordLogin: async (email: string, password: string) => {
+    const data = await request<{ ok: true; sessionToken: string; owner: { id: string; email: string; name?: string } }>('POST', `/auth/login`, { email, password })
+    if (data.sessionToken) storeSessionToken(data.sessionToken)
+    return data
+  },
   setPassword: (password: string) =>
     request<{ ok: true }>('POST', `/auth/set-password`, { password }),
   me: () => request<{ owner: { id: string; email: string; name?: string; hasPassword?: boolean } }>('GET', '/auth/me'),
-  logout: () => request<{ ok: true }>('POST', '/auth/logout'),
+  logout: async () => {
+    clearSessionToken()
+    return request<{ ok: true }>('POST', '/auth/logout')
+  },
 
   // --- Admin ---
   listSites: () => request<Array<{ id: string; slug: string; archetype: string; status: string; productionUrl?: string; customDomain?: string }>>('GET', '/admin/sites'),
@@ -85,6 +108,15 @@ export const contentClient = {
 
   listOrders: () => request<Array<{ id: string; archetype: string; plan: string; status: string; siteId?: string; createdAt: string; failureReason?: string }>>('GET', '/admin/orders'),
   retryOrder: (orderId: string) => request<{ ok: true }>('POST', `/admin/orders/${orderId}/retry`),
+  getDeployLogs: (siteId: string) => request<Array<{ step: string; status: string; message?: string; durationMs?: number; createdAt: string }>>('GET', `/admin/sites/${siteId}/deploy-logs`),
+  redeploySite: (siteId: string) => request<{ ok: boolean; deploymentId: string; url: string }>('POST', `/admin/sites/${siteId}/redeploy`),
+
+  /** Compare the site's recorded template commit against the latest commit on the template repo. */
+  getUpdateStatus: (siteId: string) => request<{ current: string | null; latest: string | null; hasUpdate: boolean; neverChecked?: boolean }>('GET', `/admin/sites/${siteId}/update-status`),
+  /** Queue a job that syncs template files into the customer's repo and triggers a redeploy. */
+  updateSite: (siteId: string) => request<{ ok: true; jobId: string | number }>('POST', `/admin/sites/${siteId}/update`),
+  /** URL of the cached screenshot PNG for a site. Pass fresh=true to force recapture. */
+  screenshotUrl: (siteId: string, fresh = false) => `${PLATFORM_API}/admin/sites/${siteId}/screenshot${fresh ? '?fresh=1' : ''}`,
 
   // --- Orders / checkout (public) ---
   createOrder: (payload: {
@@ -95,4 +127,19 @@ export const contentClient = {
     owner: { email: string; name?: string }
   }) => request<{ orderId: string; checkoutUrl: string | null; dryRun?: boolean }>('POST', '/orders', payload),
   getOrder: (id: string) => request<{ id: string; status: string; siteId?: string; failureReason?: string }>('GET', `/orders/${id}`),
+
+  // --- AI copy assistant (public — wizard uses this without auth) ---
+  aiSuggest: (payload: {
+    archetype: string
+    brand: string
+    field: string
+    context?: Record<string, string>
+  }) => {
+    if (!PLATFORM_API) return Promise.resolve({ text: '' })
+    return fetch(`${PLATFORM_API}/ai/suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(r => r.ok ? r.json() as Promise<{ text: string }> : Promise.resolve({ text: '' }))
+  },
 }
