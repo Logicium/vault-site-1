@@ -20,4 +20,5 @@ export const PLATFORM_API = (import.meta.env.VITE_CONTENT_API || '').replace(/\/
 export const PLATFORM_SLUG = import.meta.env.VITE_SITE_SLUG || ''
 
 /** Which archetype this UI represents. Used by the wizard / admin scaffolding. */
-export const ARCHETYPE_KIND = 'vault' as 'mesa' | 'hearth' | 'vault' | 'project' | 'keystone' | 'keystone'
+export const ARCHETYPE_KIND = 'vault' as 'mesa' | 'hearth' | 'vault' | 'project' |'keystone' |'keystone'
+
