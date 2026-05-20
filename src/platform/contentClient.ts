@@ -111,6 +111,16 @@ export const contentClient = {
   getDeployLogs: (siteId: string) => request<Array<{ step: string; status: string; message?: string; durationMs?: number; createdAt: string }>>('GET', `/admin/sites/${siteId}/deploy-logs`),
   redeploySite: (siteId: string) => request<{ ok: boolean; deploymentId: string; url: string }>('POST', `/admin/sites/${siteId}/redeploy`),
 
+  /** Live Vercel deployment state for a site (for progress UI). Pass deploymentId to follow a specific deploy. */
+  getDeploymentStatus: (siteId: string, deploymentId?: string) => request<{
+    state: 'QUEUED' | 'INITIALIZING' | 'BUILDING' | 'UPLOADING' | 'DEPLOYING' | 'READY' | 'ERROR' | 'CANCELED' | 'UNKNOWN'
+    deploymentId: string | null
+    url: string | null
+    createdAt: number | null
+    siteStatus: string
+    productionUrl: string | null
+  }>('GET', `/admin/sites/${siteId}/deployment-status${deploymentId ? `?deploymentId=${encodeURIComponent(deploymentId)}` : ''}`),
+
   /** Compare the site's recorded template commit against the latest commit on the template repo. */
   getUpdateStatus: (siteId: string) => request<{ current: string | null; latest: string | null; hasUpdate: boolean; neverChecked?: boolean }>('GET', `/admin/sites/${siteId}/update-status`),
   /** Queue a job that syncs template files into the customer's repo and triggers a redeploy. */
