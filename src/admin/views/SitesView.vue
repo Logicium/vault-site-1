@@ -17,6 +17,98 @@ const updateMsg = ref<Record<string, string>>({})
 const reprovisioning = ref<Record<string, boolean>>({})
 const reprovisionMsg = ref<Record<string, string>>({})
 
+// Live deployment progress per site (polled from Vercel via the backend)
+type DeployPhase = 'QUEUED' | 'INITIALIZING' | 'BUILDING' | 'UPLOADING' | 'DEPLOYING' | 'READY' | 'ERROR' | 'CANCELED' | 'UNKNOWN'
+interface DeployProgress {
+  state: DeployPhase
+  deploymentId: string | null
+  startedAt: number
+  label: string
+  percent: number
+  failed: boolean
+}
+const deployProgress = ref<Record<string, DeployProgress | null>>({})
+const deployTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
+
+const PHASE_LABEL: Record<DeployPhase, string> = {
+  QUEUED: 'Queued — waiting for Vercel to pick up the build',
+  INITIALIZING: 'Initializing build environment',
+  BUILDING: 'Building site (installing deps, compiling)',
+  UPLOADING: 'Uploading build output',
+  DEPLOYING: 'Deploying to production',
+  READY: 'Live ✓',
+  ERROR: 'Build failed',
+  CANCELED: 'Deployment canceled',
+  UNKNOWN: 'Waiting for deployment to start',
+}
+const PHASE_PERCENT: Record<DeployPhase, number> = {
+  UNKNOWN: 5, QUEUED: 10, INITIALIZING: 25, BUILDING: 55, UPLOADING: 80, DEPLOYING: 92, READY: 100, ERROR: 100, CANCELED: 100,
+}
+
+function startDeployTracking(siteId: string, deploymentId: string | null, initialLabel = 'Starting…') {
+  // Cancel any previous tracker for this site
+  stopDeployTracking(siteId)
+  deployProgress.value[siteId] = {
+    state: 'UNKNOWN',
+    deploymentId,
+    startedAt: Date.now(),
+    label: initialLabel,
+    percent: 5,
+    failed: false,
+  }
+  const tick = async () => {
+    try {
+      const status = await contentClient.getDeploymentStatus(siteId, deployProgress.value[siteId]?.deploymentId ?? undefined)
+      const state = (status.state || 'UNKNOWN') as DeployPhase
+      const prev = deployProgress.value[siteId]
+      if (!prev) return
+      deployProgress.value[siteId] = {
+        ...prev,
+        state,
+        deploymentId: status.deploymentId ?? prev.deploymentId,
+        label: PHASE_LABEL[state] ?? state,
+        percent: PHASE_PERCENT[state] ?? prev.percent,
+        failed: state === 'ERROR' || state === 'CANCELED',
+      }
+      if (state === 'READY') {
+        // Pull a fresh screenshot once the build is live
+        void refreshScreenshot(siteId)
+        // Refresh the site row so productionUrl/status reflect the new deploy
+        try {
+          sites.value = await contentClient.listSites()
+        } catch { /* non-fatal */ }
+        // Linger the READY state briefly, then clear
+        deployTimers[siteId] = setTimeout(() => { deployProgress.value[siteId] = null }, 5_000)
+        return
+      }
+      if (state === 'ERROR' || state === 'CANCELED') {
+        // Linger longer so the user can read the failure
+        deployTimers[siteId] = setTimeout(() => { deployProgress.value[siteId] = null }, 15_000)
+        return
+      }
+      // Stop polling after 10 minutes to avoid runaway timers
+      if (Date.now() - prev.startedAt > 10 * 60_000) {
+        deployProgress.value[siteId] = null
+        return
+      }
+      deployTimers[siteId] = setTimeout(tick, 3_000)
+    } catch {
+      // Transient API hiccup — keep polling
+      deployTimers[siteId] = setTimeout(tick, 5_000)
+    }
+  }
+  // Small initial delay so Vercel has a moment to register the new deployment
+  deployTimers[siteId] = setTimeout(tick, 1_500)
+}
+
+function stopDeployTracking(siteId: string) {
+  const t = deployTimers[siteId]
+  if (t) {
+    clearTimeout(t)
+    deployTimers[siteId] = null
+  }
+}
+
 // Billing diagnostic (Stripe webhook resolution)
 type BillingInfo = Awaited<ReturnType<typeof contentClient.getBillingStatus>>
 const billing = ref<Record<string, BillingInfo | null>>({})
@@ -38,8 +130,11 @@ async function loadScreenshot(siteId: string) {
     const token = getStoredToken()
     // cache: 'no-store' bypasses the HTTP cache so a page refresh after a
     // reprovision (new Vercel URL) actually gets the new screenshot.
+    // credentials:'include' sends the HttpOnly session cookie too — needed
+    // when the deployed origin has no bearer token in localStorage.
     const res = await fetch(url, {
       cache: 'no-store',
+      credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     if (!res.ok) { screenshotErr.value[siteId] = true; return }
@@ -61,6 +156,7 @@ async function refreshScreenshot(siteId: string) {
     const token = getStoredToken()
     const res = await fetch(url, {
       cache: 'no-store',
+      credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     if (!res.ok) { screenshotErr.value[siteId] = true; return }
@@ -78,7 +174,8 @@ async function redeploy(siteId: string) {
   redeployMsg.value[siteId] = ''
   try {
     const r = await contentClient.redeploySite(siteId)
-    redeployMsg.value[siteId] = `Triggered (${r.deploymentId})`
+    redeployMsg.value[siteId] = `Triggered (${r.deploymentId.slice(0, 12)}\u2026)`
+    startDeployTracking(siteId, r.deploymentId, 'Redeploy queued')
   } catch (e) {
     redeployMsg.value[siteId] = e instanceof Error ? e.message : String(e)
   } finally {
@@ -104,6 +201,9 @@ async function updateNow(siteId: string) {
   try {
     const r = await contentClient.updateSite(siteId)
     updateMsg.value[siteId] = `Update queued (${r.jobId})`
+    // Update is async (worker syncs template files then redeploys). Start tracking;
+    // the poller will discover the new deployment id on its first tick.
+    startDeployTracking(siteId, null, 'Syncing template files\u2026')
   } catch (e) {
     updateMsg.value[siteId] = e instanceof Error ? e.message : String(e)
   } finally {
@@ -123,7 +223,9 @@ async function reprovision(siteId: string) {
     const prev = screenshotBlob.value[siteId]
     if (prev) URL.revokeObjectURL(prev)
     screenshotBlob.value[siteId] = null
-    setTimeout(() => { void refreshScreenshot(siteId) }, 90_000)
+    // Track the new deployment as soon as the provisioning processor creates it.
+    // The tracker auto-refreshes the screenshot when the build reaches READY.
+    startDeployTracking(siteId, null, 'Reprovisioning \u2014 creating repo + Vercel project\u2026')
   } catch (e) {
     reprovisionMsg.value[siteId] = e instanceof Error ? e.message : String(e)
   } finally {
@@ -181,6 +283,13 @@ function formatMoney(amount: number | null | undefined, currency: string | null 
 
 function formatTimestamp(unixSec: number) {
   try { return new Date(unixSec * 1000).toLocaleString() } catch { return String(unixSec) }
+}
+
+function formatElapsed(startedAt: number) {
+  const s = Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  return `${m}m ${s % 60}s`
 }
 
 function isStuck(status: string) {
@@ -328,6 +437,30 @@ const liveCount = computed(() => sites.value.filter(s => liveUrl(s)).length)
           <p v-if="redeployMsg[s.id]" class="adm-muted site-card__msg">{{ redeployMsg[s.id] }}</p>
           <p v-if="updateMsg[s.id]" class="adm-muted site-card__msg">{{ updateMsg[s.id] }}</p>
           <p v-if="reprovisionMsg[s.id]" class="adm-muted site-card__msg">{{ reprovisionMsg[s.id] }}</p>
+
+          <div
+            v-if="deployProgress[s.id]"
+            class="site-card__deploy"
+            :class="{
+              'site-card__deploy--ok': deployProgress[s.id]!.state === 'READY',
+              'site-card__deploy--err': deployProgress[s.id]!.failed,
+            }"
+          >
+            <div class="site-card__deploy-head">
+              <span class="site-card__deploy-phase">{{ deployProgress[s.id]!.label }}</span>
+              <span class="site-card__deploy-elapsed">{{ formatElapsed(deployProgress[s.id]!.startedAt) }}</span>
+            </div>
+            <div class="site-card__deploy-bar" role="progressbar" :aria-valuenow="deployProgress[s.id]!.percent" aria-valuemin="0" aria-valuemax="100">
+              <div
+                class="site-card__deploy-fill"
+                :class="{ 'site-card__deploy-fill--indeterminate': !deployProgress[s.id]!.failed && deployProgress[s.id]!.state !== 'READY' }"
+                :style="{ width: `${deployProgress[s.id]!.percent}%` }"
+              ></div>
+            </div>
+            <div v-if="deployProgress[s.id]!.deploymentId" class="adm-muted adm-mono site-card__deploy-id">
+              deploy {{ deployProgress[s.id]!.deploymentId!.slice(0, 16) }}…
+            </div>
+          </div>
 
           <div v-if="billingOpen[s.id]" class="site-card__billing">
             <div class="site-card__billing-head">
@@ -504,4 +637,41 @@ const liveCount = computed(() => sites.value.filter(s => liveUrl(s)).length)
 .bill-grid dt { color: var(--adm-text-muted); }
 .bill-grid dd { margin: 0; word-break: break-all; }
 .adm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+
+.site-card__deploy {
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--adm-surface-2);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+.site-card__deploy--ok { border-color: color-mix(in srgb, #16a34a 50%, var(--adm-border)); }
+.site-card__deploy--err { border-color: color-mix(in srgb, #dc2626 60%, var(--adm-border)); }
+.site-card__deploy-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.82rem;
+}
+.site-card__deploy-phase { font-weight: 500; }
+.site-card__deploy-elapsed { color: var(--adm-text-muted); font-variant-numeric: tabular-nums; }
+.site-card__deploy-bar {
+  height: 6px; width: 100%;
+  background: color-mix(in srgb, var(--adm-border) 60%, transparent);
+  border-radius: 999px; overflow: hidden; position: relative;
+}
+.site-card__deploy-fill {
+  height: 100%;
+  background: var(--adm-accent);
+  border-radius: 999px;
+  transition: width 600ms ease;
+}
+.site-card__deploy--ok .site-card__deploy-fill { background: #16a34a; }
+.site-card__deploy--err .site-card__deploy-fill { background: #dc2626; }
+.site-card__deploy-fill--indeterminate {
+  background: linear-gradient(90deg, var(--adm-accent) 0%, color-mix(in srgb, var(--adm-accent) 40%, transparent) 50%, var(--adm-accent) 100%);
+  background-size: 200% 100%;
+  animation: sc-deploy-shimmer 1600ms linear infinite;
+}
+@keyframes sc-deploy-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.site-card__deploy-id { font-size: 0.7rem; }
 </style>
