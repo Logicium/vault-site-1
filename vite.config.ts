@@ -17,9 +17,11 @@ export default defineConfig({
       png: { quality: 80 },
     }),
   ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    },
-  },
+  // Read .env.local from the monorepo root so all templates share one file.
+  envDir: '..',
+  resolve: { alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@apotome/archetype-shared/': fileURLToPath(new URL('./src/_shared/', import.meta.url)),
+      '@apotome/archetype-shared': fileURLToPath(new URL('./src/_shared/index.ts', import.meta.url)),
+    } },
 })
