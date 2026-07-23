@@ -1,4 +1,4 @@
-import type { ThemeName, SwatchName, SiteVariant } from '../themes/tokens'
+﻿import type { ThemeName, SwatchName, SiteVariant } from '@apotome/archetype-shared/themes/tokens'
 
 export interface PhotoSlot { src: string; alt?: string; caption?: string }
 
@@ -39,7 +39,9 @@ export interface VaultSiteConfig {
   social: Array<{ label: string; href: string }>
 }
 
-export const siteConfig: VaultSiteConfig = {
+import { reactive } from 'vue'
+
+export const siteConfig: VaultSiteConfig = reactive(({
   brand: 'Vault Goods',
   tagline: 'Trinidad provisions',
   blurb: 'Hand-picked apparel, home goods, and gifts from makers across the Southwest.',
@@ -52,12 +54,14 @@ export const siteConfig: VaultSiteConfig = {
     email: 'shop@vaultgoods.com',
     mapEmbedUrl: 'https://www.google.com/maps?q=Trinidad,CO&output=embed',
   },
-  shopUrl: 'https://example.com/shop',
+  // Internal shop page — the built-in e-shop (premium add-on). Set to an
+  // https:// URL only if this store sells through an external platform.
+  shopUrl: '/shop',
   hours: [
     { day: 'Monday', open: 'Closed' },
-    { day: 'Tue – Fri', open: '10:00 – 6:00' },
-    { day: 'Saturday', open: '10:00 – 7:00' },
-    { day: 'Sunday', open: '11:00 – 4:00' },
+    { day: 'Tue â€“ Fri', open: '10:00 â€“ 6:00' },
+    { day: 'Saturday', open: '10:00 â€“ 7:00' },
+    { day: 'Sunday', open: '11:00 â€“ 4:00' },
   ],
   photos: {
     hero: { src: '/photos/hero.jpg', alt: 'Hero product flat lay' },
@@ -75,7 +79,7 @@ export const siteConfig: VaultSiteConfig = {
   story: {
     title: 'A general store for the new Trinidad.',
     paragraphs: [
-      'Vault is a tightly-edited shop for the things you will use every day — well-made apparel, home goods, books, and gifts.',
+      'Vault is a tightly-edited shop for the things you will use every day â€” well-made apparel, home goods, books, and gifts.',
       'We carry over 40 makers from Colorado, New Mexico, and the wider Southwest, with new arrivals every Friday.',
     ],
     facts: [
@@ -85,24 +89,24 @@ export const siteConfig: VaultSiteConfig = {
     ],
   },
   featured: [
-    { name: 'Sangre de Cristo Mug', price: '$28', image: '/photos/product-01.jpg', blurb: 'Hand-thrown stoneware', badge: 'New', url: '#' },
-    { name: 'Wool camp throw', price: '$145', image: '/photos/product-02.jpg', blurb: 'Made in Pueblo', url: '#' },
-    { name: 'Leather card wallet', price: '$62', image: '/photos/product-03.jpg', blurb: 'Vegetable-tanned', url: '#' },
-    { name: 'Field notebook', price: '$18', image: '/photos/product-04.jpg', blurb: 'Letterpress cover', badge: 'Local', url: '#' },
+    { name: 'Sangre de Cristo Mug', price: '$28', image: '/photos/product-01.jpg', blurb: 'Hand-thrown stoneware', badge: 'New', url: '/shop' },
+    { name: 'Wool camp throw', price: '$145', image: '/photos/product-02.jpg', blurb: 'Made in Pueblo', url: '/shop' },
+    { name: 'Leather card wallet', price: '$62', image: '/photos/product-03.jpg', blurb: 'Vegetable-tanned', url: '/shop' },
+    { name: 'Field notebook', price: '$18', image: '/photos/product-04.jpg', blurb: 'Letterpress cover', badge: 'Local', url: '/shop' },
   ],
   categories: [
-    { name: 'Apparel', image: '/photos/cat-apparel.jpg', count: 32, url: '#' },
-    { name: 'Home', image: '/photos/cat-home.jpg', count: 41, url: '#' },
-    { name: 'Pantry', image: '/photos/cat-pantry.jpg', count: 18, url: '#' },
-    { name: 'Gifts', image: '/photos/cat-gifts.jpg', count: 27, url: '#' },
+    { name: 'Apparel', image: '/photos/cat-apparel.jpg', count: 32, url: '/shop' },
+    { name: 'Home', image: '/photos/cat-home.jpg', count: 41, url: '/shop' },
+    { name: 'Pantry', image: '/photos/cat-pantry.jpg', count: 18, url: '/shop' },
+    { name: 'Gifts', image: '/photos/cat-gifts.jpg', count: 27, url: '/shop' },
   ],
   testimonials: [
     { quote: 'Stopped in for a card and walked out with a sweater. Worth the trip.', author: 'Liz O.', source: 'Google' },
-    { quote: 'Best gift shopping in the county. Real things by real people.', author: 'Tomás G.', source: 'Yelp' },
+    { quote: 'Best gift shopping in the county. Real things by real people.', author: 'TomÃ¡s G.', source: 'Yelp' },
     { quote: 'Their newsletter is the only marketing email I open.', author: 'Robin H.', source: 'Instagram' },
   ],
   social: [
     { label: 'Instagram', href: 'https://instagram.com' },
     { label: 'TikTok', href: 'https://tiktok.com' },
   ],
-}
+}))
