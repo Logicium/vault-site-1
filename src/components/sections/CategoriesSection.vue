@@ -1,7 +1,7 @@
 <script setup lang="ts">
 interface Category { name: string; image: string; imageAlt?: string; url?: string; count?: number }
 
-import OptimizedImage from '@/components/OptimizedImage.vue'
+import OptimizedImage from '@apotome/archetype-shared/components/OptimizedImage.vue'
 
 defineProps<{
   eyebrow?: string
