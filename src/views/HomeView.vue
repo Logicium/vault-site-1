@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { siteConfig } from '../config/site.config'
-import { VARIANT_PHOTO_COUNT } from '../themes/tokens'
-import HeroSection from '../components/sections/HeroSection.vue'
-import AboutSection from '../components/sections/AboutSection.vue'
+import { VARIANT_PHOTO_COUNT, variantAtLeast } from '@apotome/archetype-shared/themes/tokens'
+import { useSiteContentStore } from '@apotome/archetype-shared/platform/siteContentStore'
+import HeroSection from '@apotome/archetype-shared/components/sections/HeroSection.vue'
+import AboutSection from '@apotome/archetype-shared/components/sections/AboutSection.vue'
 import CategoriesSection from '../components/sections/CategoriesSection.vue'
 import ProductsSection from '../components/sections/ProductsSection.vue'
-import GallerySection from '../components/sections/GallerySection.vue'
-import HoursSection from '../components/sections/HoursSection.vue'
-import TestimonialsSection from '../components/sections/TestimonialsSection.vue'
+import GallerySection from '@apotome/archetype-shared/components/sections/GallerySection.vue'
+import HoursSection from '@apotome/archetype-shared/components/sections/HoursSection.vue'
+import TestimonialsSection from '@apotome/archetype-shared/components/sections/TestimonialsSection.vue'
 
 const galleryLimit = computed(() => VARIANT_PHOTO_COUNT[siteConfig.variant].gallery)
-const isPortfolio = computed(() => siteConfig.variant === 'portfolio')
+const isPortfolio = computed(() => variantAtLeast(siteConfig.variant, 'portfolio'))
+const content = useSiteContentStore()
+const reviewItems = computed(() =>
+  content.reviewsSource === 'google' && content.googleReviews.length
+    ? content.googleReviews
+    : siteConfig.testimonials,
+)
 </script>
 
 <template>
@@ -57,6 +64,6 @@ const isPortfolio = computed(() => siteConfig.variant === 'portfolio')
   />
   <TestimonialsSection
     eyebrow="Notes from neighbors"
-    :items="siteConfig.testimonials"
+    :items="reviewItems"
   />
 </template>
