@@ -9,7 +9,7 @@ interface Product {
   url?: string
 }
 
-import OptimizedImage from '@/components/OptimizedImage.vue'
+import OptimizedImage from '@apotome/archetype-shared/components/OptimizedImage.vue'
 
 defineProps<{
   eyebrow?: string
