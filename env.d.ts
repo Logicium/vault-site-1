@@ -9,6 +9,10 @@ interface ImportMetaEnv {
   readonly VITE_CONTENT_API?: string
   /** This site's slug as registered in the backend Sites table. */
   readonly VITE_SITE_SLUG?: string
+  /** This site's immutable UUID. Preferred over slug for content lookups. */
+  readonly VITE_SITE_ID?: string
+  /** Google Maps API key (Geocoding + Embed APIs). Required for the address map picker in admin. */
+  readonly VITE_GOOGLE_MAPS_API_KEY?: string
 }
 
 interface ImportMeta {
