@@ -1,9 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { siteConfig } from '../config/site.config'
-import { PLATFORM_ENABLED } from '../platform/config'
-import { adminRoutes } from '../admin/routes'
+import { PLATFORM_ENABLED } from '@apotome/archetype-shared/platform/config'
+import { adminRoutes } from '@apotome/archetype-shared/admin/routes'
+import { variantAtLeast } from '@apotome/archetype-shared/themes/tokens'
+import { installAnalytics } from '@apotome/archetype-shared/platform/track'
 
-const isPortfolio = siteConfig.variant === 'portfolio'
+const isPortfolio = variantAtLeast(siteConfig.variant, 'portfolio')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,5 +20,7 @@ const router = createRouter({
   ],
   scrollBehavior: () => ({ top: 0 }),
 })
+
+installAnalytics(router)
 
 export default router
