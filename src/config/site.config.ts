@@ -46,7 +46,7 @@ export const siteConfig: VaultSiteConfig = reactive(({
   tagline: 'Trinidad provisions',
   blurb: 'Hand-picked apparel, home goods, and gifts from makers across the Southwest.',
   theme: 'vibrant',
-  swatch: 'fiesta',
+  swatch: 'riot-light',
   variant: 'essentials',
   contact: {
     address: '305 Main St, Trinidad, CO 81082',
@@ -59,9 +59,9 @@ export const siteConfig: VaultSiteConfig = reactive(({
   shopUrl: '/shop',
   hours: [
     { day: 'Monday', open: 'Closed' },
-    { day: 'Tue â€“ Fri', open: '10:00 â€“ 6:00' },
-    { day: 'Saturday', open: '10:00 â€“ 7:00' },
-    { day: 'Sunday', open: '11:00 â€“ 4:00' },
+    { day: 'Tue – Fri', open: '10:00 – 6:00' },
+    { day: 'Saturday', open: '10:00 – 7:00' },
+    { day: 'Sunday', open: '11:00 – 4:00' },
   ],
   photos: {
     hero: { src: '/photos/hero.jpg', alt: 'Hero product flat lay' },
@@ -79,7 +79,7 @@ export const siteConfig: VaultSiteConfig = reactive(({
   story: {
     title: 'A general store for the new Trinidad.',
     paragraphs: [
-      'Vault is a tightly-edited shop for the things you will use every day â€” well-made apparel, home goods, books, and gifts.',
+      'Vault is a tightly-edited shop for the things you will use every day — well-made apparel, home goods, books, and gifts.',
       'We carry over 40 makers from Colorado, New Mexico, and the wider Southwest, with new arrivals every Friday.',
     ],
     facts: [
@@ -102,7 +102,7 @@ export const siteConfig: VaultSiteConfig = reactive(({
   ],
   testimonials: [
     { quote: 'Stopped in for a card and walked out with a sweater. Worth the trip.', author: 'Liz O.', source: 'Google' },
-    { quote: 'Best gift shopping in the county. Real things by real people.', author: 'TomÃ¡s G.', source: 'Yelp' },
+    { quote: 'Best gift shopping in the county. Real things by real people.', author: 'Tomás G.', source: 'Yelp' },
     { quote: 'Their newsletter is the only marketing email I open.', author: 'Robin H.', source: 'Instagram' },
   ],
   social: [
