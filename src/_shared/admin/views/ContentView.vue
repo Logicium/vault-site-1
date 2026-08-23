@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import { contentClient } from '../../platform/contentClient'
 import { useActiveSiteStore } from '../../platform/activeSiteStore'
 import { tabsForArchetype, type TabId } from '../contentSchemas'
+import { withSectionDefaults } from '../../sectionDefaults'
 import AiCopyButton from '../components/AiCopyButton.vue'
 import MapSearchPicker from '../components/MapSearchPicker.vue'
 import TextAreaField from '../../components/forms/TextAreaField.vue'
@@ -279,9 +280,16 @@ async function loadDraft() {
     // through when switching sites in the header.
     Object.assign(c, blankContent())
     applyPayload(d.payload)
-    extraPayload.value = Object.fromEntries(
+    const extras = Object.fromEntries(
       Object.entries(d.payload ?? {}).filter(([k]) => !MODELED_KEYS.has(k)),
     )
+    // Section headings live in the template's site.config until someone edits
+    // them, so a fresh draft has no \sections\ key and the editor below would
+    // render nothing — leaving headings like the hours note uneditable. Seed
+    // the known build-time defaults so they show up as ordinary fields.
+    const seeded = withSectionDefaults(archetype.value, extras.sections)
+    if (seeded) extras.sections = seeded
+    extraPayload.value = extras
   } catch (e) { toast.error(e instanceof Error ? e.message : String(e)) }
 }
 

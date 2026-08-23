@@ -14,22 +14,32 @@ const showShop = computed(() => store.hasAddOn('eshop'))
 <template>
   <HeroSection
     subpage
-    eyebrow="Shop"
-    title="Everything in the shop"
-    subtitle="New arrivals every Friday. Local pickup is free in Trinidad."
+    :eyebrow="siteConfig.sections.shopPage.eyebrow"
+    :title="siteConfig.sections.shopPage.title"
+    :subtitle="siteConfig.sections.shopPage.subtitle"
     :image="siteConfig.photos.hero.src"
     :image-alt="siteConfig.photos.hero.alt"
   />
 
   <ShopSection
     v-if="showShop"
-    eyebrow="Shop"
-    title="Available now"
-    intro="Add to cart, then check out for pickup or shipping."
+    :eyebrow="siteConfig.sections.shop.eyebrow"
+    :title="siteConfig.sections.shop.title"
+    :intro="siteConfig.sections.shop.intro"
   />
 
   <template v-else>
-    <CategoriesSection :categories="siteConfig.categories" />
-    <ProductsSection title="Featured" :products="siteConfig.featured" :shop-all-url="siteConfig.shopUrl" />
+    <CategoriesSection
+      :categories="siteConfig.categories"
+      :title="siteConfig.sections.categories.title"
+      :count-label="siteConfig.sections.categories.countLabel"
+    />
+    <ProductsSection
+      :title="siteConfig.sections.shopPage.featuredTitle"
+      :products="siteConfig.featured"
+      :shop-all-url="siteConfig.shopUrl"
+      :shop-all-label="siteConfig.sections.featured.shopAllLabel"
+      :cta-label="siteConfig.sections.featured.ctaLabel"
+    />
   </template>
 </template>

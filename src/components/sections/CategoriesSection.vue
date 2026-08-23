@@ -3,11 +3,13 @@ interface Category { name: string; image: string; imageAlt?: string; url?: strin
 
 import OptimizedImage from '@apotome/archetype-shared/components/OptimizedImage.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   eyebrow?: string
   title?: string
   categories: Category[]
-}>()
+  /** Label after a category's item count, e.g. "12 items". Owner-editable. */
+  countLabel?: string
+}>(), { countLabel: 'items' })
 </script>
 
 <template>
@@ -15,7 +17,7 @@ defineProps<{
     <div class="ap-container">
       <div class="ap-section-head">
         <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-        <h2>{{ title || 'Browse the shop' }}</h2>
+        <h2>{{ title }}</h2>
       </div>
 
       <!-- ── Style 1 · Editorial overlay tiles (default) ── -->
@@ -26,7 +28,7 @@ defineProps<{
           </div>
           <div class="ap-categories__label">
             <strong>{{ c.name }}</strong>
-            <small v-if="c.count">{{ c.count }} items</small>
+            <small v-if="c.count">{{ c.count }} {{ countLabel }}</small>
           </div>
         </a>
       </div>
@@ -44,7 +46,7 @@ defineProps<{
           </div>
           <div class="ap-categories__look-overlay">
             <h3>{{ c.name }}</h3>
-            <small v-if="c.count">{{ c.count }} items →</small>
+            <small v-if="c.count">{{ c.count }} {{ countLabel }} →</small>
           </div>
         </a>
       </div>
@@ -62,7 +64,7 @@ defineProps<{
           </div>
           <div class="ap-categories__stack-body">
             <h3>{{ c.name }}</h3>
-            <small v-if="c.count">{{ c.count }} items</small>
+            <small v-if="c.count">{{ c.count }} {{ countLabel }}</small>
           </div>
         </a>
       </div>
@@ -75,7 +77,7 @@ defineProps<{
           </div>
           <div class="ap-categories__car-body">
             <h3>{{ c.name }}</h3>
-            <small v-if="c.count">{{ c.count }} items →</small>
+            <small v-if="c.count">{{ c.count }} {{ countLabel }} →</small>
           </div>
         </a>
       </div>
@@ -89,7 +91,7 @@ defineProps<{
             </div>
             <div class="ap-categories__cat-body">
               <h3>{{ c.name }}</h3>
-              <small v-if="c.count">{{ c.count }} items</small>
+              <small v-if="c.count">{{ c.count }} {{ countLabel }}</small>
             </div>
             <span class="ap-categories__cat-arrow" aria-hidden="true">→</span>
           </a>

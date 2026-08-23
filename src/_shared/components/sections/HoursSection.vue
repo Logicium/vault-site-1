@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eyebrow?: string
   title?: string
   hours: Array<{ day: string; open: string }>
   note?: string
-}>()
+  /** Marquee variant labels. Owner-editable. */
+  todayLabelText?: string
+  closedLabel?: string
+}>(), { title: 'Hours', todayLabelText: 'Today', closedLabel: '— closed —' })
 
 // Naive "open now" hint for marquee variant — uses today's row only.
 const todayLabel = computed(() => {
@@ -32,7 +35,7 @@ const todayRow = computed(() =>
     <div class="ap-container ap-hours__ledger">
       <div class="ap-section-head">
         <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-        <h2>{{ title || 'Hours' }}</h2>
+        <h2>{{ title }}</h2>
         <p v-if="note" class="ap-hours__note">{{ note }}</p>
       </div>
       <ul class="ap-hours__list">
@@ -48,14 +51,14 @@ const todayRow = computed(() =>
     <div class="ap-container ap-hours__marquee">
       <div class="ap-section-head">
         <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-        <h2>{{ title || 'Hours' }}</h2>
+        <h2>{{ title }}</h2>
         <p v-if="note" class="ap-hours__note">{{ note }}</p>
       </div>
       <div class="ap-hours__marquee-today">
-        <p class="ap-hours__marquee-today-label">Today</p>
+        <p class="ap-hours__marquee-today-label">{{ todayLabelText }}</p>
         <p class="ap-hours__marquee-title">
           <span class="ap-hours__marquee-day">{{ todayRow?.day || todayLabel }}</span>
-          <span class="ap-hours__marquee-time">{{ todayRow?.open || '— closed —' }}</span>
+          <span class="ap-hours__marquee-time">{{ todayRow?.open || closedLabel }}</span>
         </p>
       </div>
       <ul class="ap-hours__strip">
@@ -70,7 +73,7 @@ const todayRow = computed(() =>
     <div class="ap-container ap-hours__pillar">
       <div class="ap-section-head ap-hours__pillar-aside">
         <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-        <h2>{{ title || 'Hours' }}</h2>
+        <h2>{{ title }}</h2>
         <p v-if="note" class="ap-hours__note">{{ note }}</p>
       </div>
       <ol class="ap-hours__rail">
@@ -87,7 +90,7 @@ const todayRow = computed(() =>
     <div class="ap-container ap-hours__tiles">
       <div class="ap-section-head">
         <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-        <h2>{{ title || 'Hours' }}</h2>
+        <h2>{{ title }}</h2>
         <p v-if="note" class="ap-hours__note">{{ note }}</p>
       </div>
       <ul class="ap-hours__tiles-grid">
@@ -106,7 +109,7 @@ const todayRow = computed(() =>
       <div class="ap-container">
         <div class="ap-section-head">
           <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-          <h2>{{ title || 'Hours' }}</h2>
+          <h2>{{ title }}</h2>
         </div>
       </div>
       <div class="ap-hours__ribbon-band" role="list">

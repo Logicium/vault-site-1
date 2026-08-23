@@ -454,6 +454,20 @@ export const contentClient = {
       'PUT', `/admin/sites/${siteId}/ordering-config`, { config },
     ),
 
+  // --- Point of sale (kitchen ticket printing for Mesa ordering) ---
+  posStatus: (siteId: string) =>
+    request<PosStatusDTO>('GET', `/admin/sites/${siteId}/pos/status`),
+  posConnectUrl: (siteId: string, provider: string) =>
+    request<{ url: string }>('GET', `/admin/sites/${siteId}/pos/connect?provider=${encodeURIComponent(provider)}`),
+  posDisconnect: (siteId: string) =>
+    request<{ ok: true }>('POST', `/admin/sites/${siteId}/pos/disconnect`),
+  posSaveConfig: (siteId: string, config: PosConfigDTO | null) =>
+    request<{ config: Required<PosConfigDTO> }>('PUT', `/admin/sites/${siteId}/pos/config`, { config }),
+  posSendOrder: (siteId: string, orderId: string) =>
+    request<{ ok: true; posOrderId: string | null; posSyncedAt: string | null }>(
+      'POST', `/admin/sites/${siteId}/pos/orders/${orderId}/send`,
+    ),
+
   // --- Ticketing (Marquee Events add-on) — public ---
   ticketingListEvents: (siteSlug: string) =>
     request<EventDTO[]>('GET', `/ticketing/events?siteSlug=${encodeURIComponent(siteSlug)}`),
@@ -694,6 +708,33 @@ export interface MealOrderDTO {
   currency: string
   status: 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled'
   createdAt: string
+  /** Set once the order exists in the connected POS. */
+  posOrderId?: string | null
+  posSyncedAt?: string | null
+  /** Last POS push failure, shown in the dashboard with a resend button. */
+  posSyncError?: string | null
+}
+
+export interface PosConfigDTO {
+  /** Push each new online order to the POS automatically. */
+  autoSend?: boolean
+  /** Fire the vendor's print event so a kitchen ticket prints. */
+  autoPrint?: boolean
+  /** Prefix on the POS order title, e.g. "ONLINE - Jane D." */
+  titlePrefix?: string
+}
+
+export interface PosStatusDTO {
+  connected: boolean
+  provider: 'clover' | 'square' | 'toast' | null
+  merchantId: string | null
+  merchantName: string | null
+  connectedAt: string | null
+  accessTokenExpiresAt: string | null
+  /** True when the refresh token itself has expired — owner must reconnect. */
+  needsReconnect: boolean
+  config: Required<PosConfigDTO>
+  providers: Array<{ id: 'clover' | 'square' | 'toast'; label: string; configured: boolean }>
 }
 
 export interface OrderingConfigDTO {

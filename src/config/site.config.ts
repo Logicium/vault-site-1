@@ -37,6 +37,23 @@ export interface VaultSiteConfig {
   testimonials: Array<{ quote: string; author: string; source?: string }>
   shopUrl: string
   social: Array<{ label: string; href: string }>
+  /** Editable section headers (eyebrows / titles / notes / CTA labels) so
+   *  owners control every heading on the site, not just body copy. */
+  sections: {
+    nav: { home: string; shop: string; visit: string; gallery: string; ctaLabel: string }
+    hero: { ctaPrimary: string; ctaSecondary: string }
+    categories: { eyebrow: string; title: string; countLabel: string }
+    featured: { eyebrow: string; title: string; shopAllLabel: string; ctaLabel: string }
+    story: { eyebrow: string }
+    gallery: { eyebrow: string }
+    hours: { eyebrow: string; title: string }
+    reviews: { eyebrow: string; title: string }
+    shopPage: { eyebrow: string; title: string; subtitle: string; featuredTitle: string }
+    shop: { eyebrow: string; title: string; intro: string }
+    visit: { eyebrow: string; title: string; subtitle: string }
+    galleryPage: { eyebrow: string; title: string }
+    contact: { title: string }
+  }
 }
 
 import { reactive } from 'vue'
@@ -109,4 +126,28 @@ export const siteConfig: VaultSiteConfig = reactive(({
     { label: 'Instagram', href: 'https://instagram.com' },
     { label: 'TikTok', href: 'https://tiktok.com' },
   ],
+  sections: {
+    nav: { home: 'Home', shop: 'Shop', visit: 'Visit', gallery: 'Lookbook', ctaLabel: 'Shop' },
+    hero: { ctaPrimary: 'Shop now', ctaSecondary: 'Visit us' },
+    categories: { eyebrow: 'Browse', title: 'Browse the shop', countLabel: 'items' },
+    featured: { eyebrow: 'Just in', title: 'A few favorites', shopAllLabel: 'Shop everything', ctaLabel: 'View' },
+    story: { eyebrow: 'Our shop' },
+    gallery: { eyebrow: 'In the wild' },
+    hours: { eyebrow: 'Visit', title: 'When we\u2019re open' },
+    reviews: { eyebrow: 'Notes from neighbors', title: 'What our guests say' },
+    shopPage: {
+      eyebrow: 'Shop',
+      title: 'Everything in the shop',
+      subtitle: 'New arrivals every Friday. Local pickup is free in Trinidad.',
+      featuredTitle: 'Featured',
+    },
+    shop: { eyebrow: 'Shop', title: 'Available now', intro: 'Add to cart, then check out for pickup or shipping.' },
+    visit: {
+      eyebrow: 'Visit',
+      title: 'Stop in',
+      subtitle: 'Right on Main Street, two doors down from the post office. Free street parking.',
+    },
+    galleryPage: { eyebrow: 'Lookbook', title: 'Goods in their habitat' },
+    contact: { title: 'Send us a note' },
+  },
 }))

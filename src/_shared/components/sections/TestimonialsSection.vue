@@ -2,11 +2,11 @@
 import { ref, computed } from 'vue'
 import { Star, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eyebrow?: string
   title?: string
   items: Array<{ quote: string; author: string; source?: string; rating?: number }>
-}>()
+}>(), { title: 'What our guests say' })
 
 // Carousel index (Style 3)
 const idx = ref(0)
@@ -33,7 +33,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
         <div class="ap-testimonials--studio">
           <div class="ap-section-head">
             <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-            <h2>{{ title || 'What our guests say' }}</h2>
+            <h2>{{ title }}</h2>
           </div>
           <div class="ap-testimonials__studio-grid">
             <figure v-for="(t, i) in items" :key="i" class="ap-testimonials__studio-item">
@@ -51,7 +51,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
         <div class="ap-testimonials--heritage">
           <div class="ap-section-head ap-section-head--center">
             <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-            <h2>{{ title || 'What our guests say' }}</h2>
+            <h2>{{ title }}</h2>
           </div>
           <div class="ap-testimonials__heritage-grid">
             <figure v-for="(t, i) in items" :key="i" class="ap-testimonials__heritage-item">
@@ -69,7 +69,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
         <div class="ap-testimonials--vibrant">
           <div class="ap-section-head ap-section-head--center">
             <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-            <h2>{{ title || 'What our guests say' }}</h2>
+            <h2>{{ title }}</h2>
           </div>
           <div class="ap-testimonials__vibrant-grid">
             <figure v-for="(t, i) in items" :key="i" class="ap-testimonials__vibrant-item">
@@ -90,7 +90,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
         <div class="ap-testimonials--ironwood">
           <div class="ap-section-head">
             <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-            <h2>{{ title || 'Client reports' }}</h2>
+            <h2>{{ title }}</h2>
           </div>
           <div class="ap-testimonials__ironwood-grid">
             <figure v-for="(t, i) in items" :key="i" class="ap-testimonials__ironwood-item">
@@ -114,7 +114,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
       <div class="ap-reviews__spotlight">
         <div class="ap-section-head">
           <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-          <h2>{{ title || 'What our guests say' }}</h2>
+          <h2>{{ title }}</h2>
         </div>
         <figure v-if="items[0]" class="ap-reviews__spotlight-feature">
           <div class="ap-reviews__spotlight-mark" aria-hidden="true">"</div>
@@ -142,7 +142,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
       <div class="ap-reviews__carousel" v-if="items.length">
         <div class="ap-section-head">
           <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-          <h2>{{ title || 'What our guests say' }}</h2>
+          <h2>{{ title }}</h2>
         </div>
         <figure class="ap-reviews__carousel-card" :key="idx">
           <div class="ap-reviews__stars">
@@ -174,7 +174,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
       <div class="ap-reviews__wall">
         <div class="ap-section-head">
           <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-          <h2>{{ title || 'What our guests say' }}</h2>
+          <h2>{{ title }}</h2>
         </div>
         <div class="ap-reviews__wall-grid">
           <figure v-for="(t, i) in items" :key="`w-${i}`" class="ap-reviews__wall-item" :data-size="String((i % 3) + 1)">
@@ -194,7 +194,7 @@ function next() { idx.value = (idx.value + 1) % total.value }
       <div class="ap-reviews__ticker" v-if="items.length">
         <div class="ap-section-head">
           <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-          <h2>{{ title || 'What our guests say' }}</h2>
+          <h2>{{ title }}</h2>
         </div>
         <div class="ap-reviews__ticker-viewport" aria-hidden="false">
           <div class="ap-reviews__ticker-track">

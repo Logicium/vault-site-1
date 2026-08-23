@@ -8,15 +8,19 @@ import HoursSection from '@apotome/archetype-shared/components/sections/HoursSec
 <template>
   <HeroSection
     subpage
-    eyebrow="Visit"
-    title="Stop in"
-    subtitle="Right on Main Street, two doors down from the post office. Free street parking."
+    :eyebrow="siteConfig.sections.visit.eyebrow"
+    :title="siteConfig.sections.visit.title"
+    :subtitle="siteConfig.sections.visit.subtitle"
     :image="siteConfig.photos.hero.src"
     :image-alt="siteConfig.photos.hero.alt"
   />
-  <HoursSection :hours="siteConfig.hours" />
+  <HoursSection
+    :eyebrow="siteConfig.sections.hours.eyebrow"
+    :title="siteConfig.sections.hours.title"
+    :hours="siteConfig.hours"
+  />
   <ContactSection
-    title="Send us a note"
+    :title="siteConfig.sections.contact.title"
     :address="siteConfig.contact.address"
     :phone="siteConfig.contact.phone"
     :email="siteConfig.contact.email"

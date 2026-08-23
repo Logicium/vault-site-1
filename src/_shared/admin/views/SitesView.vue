@@ -76,17 +76,24 @@ function startDeployTracking(
       const prev = deployProgress.value[siteId]
       if (!prev) return
 
-      // Guard against showing READY for a deployment that finished BEFORE the
-      // user clicked Update/Redeploy. This happens when the worker hasn't yet
-      // triggered the new build, so Vercel returns the previous (already-live)
-      // deployment. We only honor READY once Vercel reports a deployment whose
-      // id differs from the prior one AND whose createdAt is after startedAt.
-      const isStaleDeploy =
-        (state === 'READY' || state === 'DEPLOYING' || state === 'UPLOADING') &&
-        (
-          (priorDeploymentId != null && status.deploymentId === priorDeploymentId) ||
-          (status.createdAt != null && status.createdAt < startedAt)
-        )
+      // Guard against reporting a deployment that already existed BEFORE the
+      // user clicked Update/Redeploy. Until the worker triggers the new build,
+      // Vercel keeps returning the previous deployment.
+      //
+      // Staleness is about WHICH deployment we're looking at, not which state
+      // it happens to be in — so this applies to EVERY state, terminal ones
+      // included. Previously ERROR/CANCELED skipped the guard, so a site whose
+      // last build had failed reported "Build failed" a second after clicking
+      // Update, even though the new build went on to succeed.
+      //
+      // Once we've latched onto a deployment that is demonstrably new, drop the
+      // guard so genuine failures of THAT build still surface immediately.
+      const latchedOntoNew =
+        prev.deploymentId != null && prev.deploymentId !== priorDeploymentId
+      const isStaleDeploy = !latchedOntoNew && (
+        (priorDeploymentId != null && status.deploymentId === priorDeploymentId) ||
+        (status.createdAt != null && status.createdAt < startedAt)
+      )
 
       if (isStaleDeploy) {
         deployProgress.value[siteId] = {

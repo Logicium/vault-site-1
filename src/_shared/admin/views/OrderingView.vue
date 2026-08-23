@@ -5,6 +5,8 @@ import { useActiveSiteStore } from '../../platform/activeSiteStore'
 import MoneyInput from '../components/inputs/MoneyInput.vue'
 import NumberInput from '../components/inputs/NumberInput.vue'
 import ToggleInput from '../components/inputs/ToggleInput.vue'
+import PosPanel from '../components/PosPanel.vue'
+import { useToast } from '../composables/useToast'
 import SelectInput from '../components/inputs/SelectInput.vue'
 import SearchSelect from '../components/inputs/SearchSelect.vue'
 import TimezoneSelect from '../components/inputs/TimezoneSelect.vue'
@@ -15,6 +17,7 @@ import ChipsInput from '../components/inputs/ChipsInput.vue'
 const CURRENCY_OPTIONS = ['USD', 'CAD', 'EUR', 'GBP', 'MXN'].map(c => ({ value: c, label: c }))
 
 const activeSites = useActiveSiteStore()
+const toast = useToast()
 const siteId = computed(() => activeSites.activeId)
 
 const loading = ref(false)
@@ -245,6 +248,27 @@ async function toggleAddOn() {
   }
 }
 
+const sendingPos = ref<string | null>(null)
+
+/** Push (or retry) one order to the connected POS so its ticket prints. */
+async function sendToPos(o: MealOrderDTO) {
+  if (!siteId.value || sendingPos.value) return
+  sendingPos.value = o.id
+  try {
+    const r = await contentClient.posSendOrder(siteId.value, o.id)
+    o.posOrderId = r.posOrderId
+    o.posSyncedAt = r.posSyncedAt
+    o.posSyncError = null
+    toast.success('Ticket sent to your POS.')
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    o.posSyncError = msg
+    toast.error(msg)
+  } finally {
+    sendingPos.value = null
+  }
+}
+
 async function setOrderStatus(o: MealOrderDTO, status: MealOrderDTO['status']) {
   if (!siteId.value) return
   try {
@@ -268,8 +292,15 @@ function pickupLocal(iso: string) {
   }).format(new Date(iso))
 }
 
-onMounted(load)
-watch(siteId, load)
+/* Menu → Ordering is a live link: after load, silently pull in any dish
+   that isn't sellable yet (idempotent — matches by name). The button in
+   the header stays as a manual re-sync. */
+async function loadAndSync() {
+  await load()
+  await importFromMenu()
+}
+onMounted(loadAndSync)
+watch(siteId, loadAndSync)
 </script>
 
 <template>
@@ -406,12 +437,14 @@ watch(siteId, load)
         <span v-if="savedAt" class="adm-muted">Saved {{ new Date(savedAt).toLocaleTimeString() }}</span>
       </div>
 
+      <PosPanel :site-id="siteId" />
+
       <section class="adm-card">
         <h2 class="adm-h2">Orders</h2>
         <p v-if="!orders.length" class="adm-muted">No orders yet.</p>
         <table v-else class="adm-table">
           <thead>
-            <tr><th>Pickup</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th /></tr>
+            <tr><th>Pickup</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Ticket</th><th /></tr>
           </thead>
           <tbody>
             <tr v-for="o in orders" :key="o.id">
@@ -428,6 +461,31 @@ watch(siteId, load)
               <td>{{ money(o.totalCents, o.currency) }}</td>
               <td>
                 <span class="adm-badge" :class="o.status === 'cancelled' ? 'adm-badge--warn' : (o.status === 'completed' ? 'adm-badge--ok' : 'adm-badge--info')">{{ o.status }}</span>
+              </td>
+              <td class="ticket-cell">
+                <!-- Reached the POS AND printed. -->
+                <span
+                  v-if="o.posOrderId && !o.posSyncError"
+                  class="adm-badge adm-badge--ok"
+                  title="Sent to your POS and the kitchen ticket printed"
+                >Printed</span>
+                <!-- Reached the POS but the ticket did not print: the order is
+                     safe, the kitchen just never saw paper. Say exactly that. -->
+                <template v-else-if="o.posOrderId && o.posSyncError">
+                  <span class="adm-badge adm-badge--warn" :title="o.posSyncError">Sent, no ticket</span>
+                  <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" :disabled="sendingPos === o.id" @click="sendToPos(o)">
+                    {{ sendingPos === o.id ? 'Printing…' : 'Print again' }}
+                  </button>
+                </template>
+                <template v-else-if="o.posSyncError">
+                  <span class="adm-badge adm-badge--warn" :title="o.posSyncError">Failed</span>
+                  <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" :disabled="sendingPos === o.id" @click="sendToPos(o)">
+                    {{ sendingPos === o.id ? 'Sending…' : 'Retry' }}
+                  </button>
+                </template>
+                <button v-else type="button" class="adm-btn adm-btn--ghost adm-btn--sm" :disabled="sendingPos === o.id" @click="sendToPos(o)">
+                  {{ sendingPos === o.id ? 'Sending…' : 'Send' }}
+                </button>
               </td>
               <td class="order-actions">
                 <button v-if="o.status === 'pending'" type="button" class="adm-btn adm-btn--ghost adm-btn--sm" @click="setOrderStatus(o, 'confirmed')">Confirm</button>

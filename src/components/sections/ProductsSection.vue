@@ -11,14 +11,18 @@ interface Product {
 
 import OptimizedImage from '@apotome/archetype-shared/components/OptimizedImage.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   eyebrow?: string
   title?: string
   intro?: string
   products: Product[]
   /** Show 'Shop all' link below grid. */
   shopAllUrl?: string
-}>()
+  /** Per-product link label. Owner-editable. */
+  ctaLabel?: string
+  /** Label on the shop-everything button. Owner-editable. */
+  shopAllLabel?: string
+}>(), { ctaLabel: 'View', shopAllLabel: '{{ shopAllLabel }}' })
 </script>
 
 <template>
@@ -26,7 +30,7 @@ defineProps<{
     <div class="ap-container">
       <div class="ap-section-head">
         <span v-if="eyebrow" class="ap-eyebrow">{{ eyebrow }}</span>
-        <h2>{{ title || 'In the shop' }}</h2>
+        <h2>{{ title }}</h2>
         <p v-if="intro" style="color: var(--ap-ink-muted)">{{ intro }}</p>
       </div>
 
@@ -42,7 +46,7 @@ defineProps<{
             <p v-if="p.blurb" class="ap-products__blurb">{{ p.blurb }}</p>
             <div class="ap-products__foot">
               <span class="ap-products__price">{{ p.price }}</span>
-              <a v-if="p.url" :href="p.url" class="ap-btn ap-btn--ghost">View</a>
+              <a v-if="p.url" :href="p.url" class="ap-btn ap-btn--ghost">{{ ctaLabel }}</a>
             </div>
           </div>
         </article>
@@ -100,7 +104,7 @@ defineProps<{
             <p v-if="p.blurb">{{ p.blurb }}</p>
             <div class="ap-products__car-foot">
               <span class="ap-products__car-price">{{ p.price }}</span>
-              <a v-if="p.url" :href="p.url" class="ap-btn ap-btn--ghost">View</a>
+              <a v-if="p.url" :href="p.url" class="ap-btn ap-btn--ghost">{{ ctaLabel }}</a>
             </div>
           </div>
         </article>
@@ -119,13 +123,13 @@ defineProps<{
           <div class="ap-products__cat-meta">
             <span v-if="p.badge" class="ap-products__cat-badge">{{ p.badge }}</span>
             <span class="ap-products__cat-price">{{ p.price }}</span>
-            <a v-if="p.url" :href="p.url" class="ap-btn ap-btn--ghost">View</a>
+            <a v-if="p.url" :href="p.url" class="ap-btn ap-btn--ghost">{{ ctaLabel }}</a>
           </div>
         </li>
       </ul>
 
       <p v-if="shopAllUrl" style="text-align: center; margin-top: 2rem">
-        <a :href="shopAllUrl" class="ap-btn">Shop everything</a>
+        <a :href="shopAllUrl" class="ap-btn">{{ shopAllLabel }}</a>
       </p>
     </div>
   </section>
