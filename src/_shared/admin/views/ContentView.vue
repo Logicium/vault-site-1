@@ -14,10 +14,11 @@ import ChipsInput from '../components/inputs/ChipsInput.vue'
 import IconInput from '../components/inputs/IconInput.vue'
 import SocialIconInput from '../components/inputs/SocialIconInput.vue'
 import MenuScanButton from '../components/MenuScanButton.vue'
+import { combineSizedItems } from '../../platform/menuSizes'
 import { useToast } from '../composables/useToast'
 
 interface PhotoSlot { src: string; alt?: string; caption?: string }
-interface MenuItem { name: string; description?: string; price: string; tags?: string[]; image?: string }
+interface MenuItem { name: string; description?: string; price: string; sizes?: Array<{ label: string; price: string }>; tags?: string[]; image?: string }
 interface MenuCategory { name: string; description?: string; items: MenuItem[]; image?: string }
 interface HourRow { day: string; open: string }
 interface SocialLink { label: string; href: string; icon?: string }
@@ -249,7 +250,13 @@ function applyPayload(raw: Record<string, unknown>) {
   if (p.hours    !== undefined) replaceRows(c.hours, asRows<HourRow>(p.hours))
   if (p.photos   !== undefined) Object.assign(c.photos,  p.photos)
   if (p.story    !== undefined) Object.assign(c.story,   p.story)
-  if (p.menu     !== undefined) Object.assign(c.menu,    p.menu)
+  if (p.menu     !== undefined) {
+    Object.assign(c.menu, p.menu)
+    // Proactively tidy legacy per-size items ("Pepperoni 12\"" three times
+    // over) into one dish with sizes. The owner sees a toast, the sizes UI,
+    // and a per-dish "Use one price" to undo; the change persists on save.
+    autoCombineMenuSizes()
+  }
   if (p.rooms    !== undefined) replaceRows(c.rooms, migrateRooms(p.rooms))
   if (p.amenities !== undefined) replaceRows(c.amenities, asRows<AmenityItem>(p.amenities))
   if (p.services !== undefined) replaceRows(c.services, migrateServices(p.services))
@@ -388,6 +395,36 @@ function removeCategory(i: number)    { c.menu.categories.splice(i, 1) }
 function addMenuItem(cat: MenuCategory)              { cat.items.push({ name: '', description: '', price: '', tags: [], image: '' }) }
 function removeMenuItem(cat: MenuCategory, i: number){ cat.items.splice(i, 1) }
 
+/* ── Sizes on a dish ──
+   One item, several prices ("12\" / 16\" / 18\""). With sizes present the
+   single price field hides; clearing the last size brings it back. */
+function addSizes(item: MenuItem) {
+  item.sizes = [{ label: '', price: item.price || '' }, { label: '', price: '' }]
+  item.price = ''
+}
+function addSize(item: MenuItem)              { item.sizes?.push({ label: '', price: '' }) }
+function removeSize(item: MenuItem, i: number) {
+  item.sizes?.splice(i, 1)
+  if (!item.sizes?.length) removeSizes(item)
+}
+function removeSizes(item: MenuItem) {
+  item.price = item.sizes?.find(sz => sz.price)?.price ?? item.price
+  delete item.sizes
+}
+
+/** Legacy menus list each size as its own dish. Merge those families into
+    single dishes with a `sizes` array as soon as they enter the editor. */
+function autoCombineMenuSizes(announce = true) {
+  const { categories, combined } = combineSizedItems(c.menu.categories)
+  if (!combined) return
+  c.menu.categories = categories as MenuCategory[]
+  if (announce) {
+    toast.success(combined === 1
+      ? 'Combined 1 dish listed in several sizes. Save to keep.'
+      : `Combined ${combined} dishes listed in several sizes. Save to keep.`)
+  }
+}
+
 /** Merge AI-scanned menu categories into the editor. Existing categories are
     kept; scanned categories with a matching name absorb the new items, and
     brand-new categories are appended. Images/tags are left for the owner to
@@ -412,6 +449,7 @@ function applyScannedMenu(scanned: ScannedMenu) {
       added++
     }
   }
+  if (added) autoCombineMenuSizes(false)
   toast.success(added ? `Added ${added} item${added === 1 ? '' : 's'} from your menu photo` : 'No menu items found in that image')
 }
 
@@ -769,12 +807,24 @@ function stringFields(obj: Record<string, unknown>): Array<[string, string]> {
             <div class="menu-item__body">
               <div class="menu-item__row">
                 <input v-model="item.name" placeholder="Dish name" class="menu-item__name" />
-                <input v-model="item.price" placeholder="$0" class="menu-item__price" />
+                <input v-if="!item.sizes?.length" v-model="item.price" placeholder="$0" class="menu-item__price" />
                 <div class="menu-item__tags">
                   <ChipsInput :model-value="item.tags ?? []" placeholder="V, GF…" @update:model-value="(v: string[]) => item.tags = v" />
                 </div>
                 <button type="button" class="btn-remove btn-remove--icon" @click="removeMenuItem(cat, ii)">×</button>
               </div>
+              <div v-if="item.sizes?.length" class="menu-item__sizes">
+                <div v-for="(sz, si) in item.sizes" :key="si" class="menu-item__size-row">
+                  <input v-model="sz.label" placeholder="Size (12&quot;, Large…)" class="menu-item__size-label" />
+                  <input v-model="sz.price" placeholder="$0" class="menu-item__price" />
+                  <button type="button" class="btn-remove btn-remove--icon" @click="removeSize(item, si)">×</button>
+                </div>
+                <div class="menu-item__size-actions">
+                  <button type="button" class="btn-add btn-add--indent" @click="addSize(item)">+ Add size</button>
+                  <button type="button" class="menu-item__one-price" @click="removeSizes(item)">Use one price</button>
+                </div>
+              </div>
+              <button v-else type="button" class="menu-item__one-price" @click="addSizes(item)">+ Sizes</button>
               <TextAreaField v-model="item.description" :rows="2" :maxlength="160" placeholder="Description…" />
             </div>
           </div>
@@ -1332,6 +1382,18 @@ button:hover { border-color: var(--adm-accent); color: var(--adm-accent); }
 .menu-cat__row { display: flex; align-items: center; gap: 0.5rem; }
 .menu-cat__fields input { margin-top: 0; }
 
+.menu-item__sizes { display: flex; flex-direction: column; gap: 0.35rem; }
+.menu-item__size-row { display: flex; align-items: center; gap: 0.5rem; }
+.menu-item__size-row input { margin-top: 0; min-height: 2.5rem; }
+.menu-item__size-label { flex: 1 1 auto; min-width: 0; }
+.menu-item__size-actions { display: flex; align-items: center; gap: 0.9rem; }
+.menu-item__one-price {
+  align-self: flex-start;
+  background: none; border: none; padding: 0;
+  font: inherit; font-size: 0.78rem; font-weight: 600;
+  color: var(--adm-text-muted); cursor: pointer;
+}
+.menu-item__one-price:hover { color: var(--adm-accent); }
 .menu-item {
   display: grid; grid-template-columns: 72px 1fr; gap: 0.6rem;
   padding: 0.7rem; margin-bottom: 0.5rem;

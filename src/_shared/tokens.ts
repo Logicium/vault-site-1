@@ -5,7 +5,7 @@
  */
 
 export type { ThemeName, HeroStyle, FooterStyle, ContactStyle, HoursStyle, GalleryStyle, ReviewsStyle, SubheroStyle, SiteStyle, Alignment, SwatchGroup, SwatchName, SiteVariant, Archetype } from './themes/tokens'
-export { VARIANT_PHOTO_COUNT, VARIANT_RANK, variantAtLeast, resolveVariant } from './themes/tokens'
+export { VARIANT_PHOTO_COUNT, VARIANT_RANK, variantAtLeast, resolveVariant, resolvePlanTier } from './themes/tokens'
 
 import type { Archetype } from './themes/tokens'
 

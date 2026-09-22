@@ -773,7 +773,7 @@ watch(() => prefs.value.themeAutosave, (on) => {
         <div v-show="tab === 'color'" class="ap-switcher__panel">
           <div class="ap-switcher__span">
             <div class="ap-lab__modes-row">
-              <span class="ap-eyebrow">Every palette comes in both</span>
+              <span class="ap-eyebrow">Palettes</span>
               <div class="ap-modes" role="group" aria-label="Light or dark palette">
                 <button type="button" class="ap-modes__btn" :class="{ 'is-active': pickerMode === 'light' }" @click="setPickerMode('light')"><Sun :size="13" /> Light</button>
                 <button type="button" class="ap-modes__btn" :class="{ 'is-active': pickerMode === 'dark' }" @click="setPickerMode('dark')"><Moon :size="13" /> Dark</button>
@@ -781,9 +781,11 @@ watch(() => prefs.value.themeAutosave, (on) => {
             </div>
             <div v-for="grp in theoryGroups" :key="grp.id" class="ap-lab__theory">
               <div class="ap-lab__theory-head">
-                <span class="ap-lab__theory-name">{{ grp.label }}</span>
+                <!-- The one-line group description lives in the tooltip now:
+                     six visible sentences made the docked panel taller than a
+                     laptop screen, and the swatches already show the mood. -->
+                <span class="ap-lab__theory-name" :title="grp.subtext">{{ grp.label }}</span>
               </div>
-              <p class="ap-lab__theory-sub">{{ grp.subtext }}</p>
               <div class="ap-lab__swatches">
                 <button
                   v-for="f in grp.items"
@@ -808,8 +810,7 @@ watch(() => prefs.value.themeAutosave, (on) => {
             <!-- My palettes -->
             <div class="ap-lab__theory ap-lab__theory--mine">
               <div class="ap-lab__theory-head">
-                <span class="ap-lab__theory-name">My palettes</span>
-                <span class="ap-lab__theory-harmony">Built &amp; saved by you</span>
+                <span class="ap-lab__theory-name" title="Palettes you build below are saved here">My palettes</span>
               </div>
               <div v-if="customSwatches.length" class="ap-lab__swatches">
                 <div
@@ -831,7 +832,7 @@ watch(() => prefs.value.themeAutosave, (on) => {
                   </button>
                 </div>
               </div>
-              <p v-else class="ap-switcher__hint">No saved palettes yet. Build one below.</p>
+              <p v-else class="ap-switcher__hint">None yet.</p>
 
               <button v-if="!builderOpen" type="button" class="ap-switcher__chip ap-switcher__chip--icon ap-lab__new" @click="builderOpen = true">
                 <Plus :size="14" /> New palette
@@ -1401,6 +1402,18 @@ watch(() => prefs.value.themeAutosave, (on) => {
   gap: 0.9rem 1.25rem;
   animation: ap-switcher-fade 360ms ease both;
 }
+/* Docked panels cap at the viewport and scroll inside. The expand region
+   animates to the measured panel height, so without this cap a tall tab
+   (the Color Studio on a laptop) grows past the screen and, with the
+   expand's overflow hidden, everything past the fold is simply unreachable.
+   The cap keeps the measurement itself under the viewport: 8rem covers the
+   dock offset, the header row and panel padding. Detached and fullscreen
+   windows manage their own height and scrolling. */
+.ap-switcher:not(.is-detached):not(.is-fullscreen) .ap-switcher__panel {
+  max-height: calc(100dvh - 8rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 @keyframes ap-switcher-fade {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
@@ -1472,37 +1485,25 @@ watch(() => prefs.value.themeAutosave, (on) => {
    Theory groups render as titled clusters; each swatch is a tile painted
    in its own SURFACE color (the background is the point), with primary +
    accent dots and the palette name set in its own ink. */
-.ap-lab__theory { margin-bottom: 1rem; }
+.ap-lab__theory { margin-bottom: 0.6rem; }
 .ap-lab__theory--mine {
   margin-bottom: 0;
-  padding-top: 0.85rem;
+  padding-top: 0.6rem;
   border-top: 1px dashed color-mix(in srgb, var(--ap-line) 80%, transparent);
 }
 .ap-lab__theory-head {
   display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+  margin-bottom: 0.3rem;
 }
 .ap-lab__theory-name {
   font-size: 0.72rem; font-weight: 700;
   letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--ap-ink);
 }
-.ap-lab__theory-harmony {
-  font-size: 0.68rem; color: var(--ap-ink-muted);
-  font-style: italic;
-}
-/* One-line category subtext — the single line of meaning per group. */
-.ap-lab__theory-sub {
-  margin: 0.1rem 0 0.5rem;
-  font-size: 0.72rem; line-height: 1.4;
-  color: var(--ap-ink-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%;
-}
-
 /* Studio-wide light/dark mode toggle */
 .ap-lab__modes-row {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 0.6rem; margin-bottom: 0.85rem;
+  gap: 0.6rem; margin-bottom: 0.6rem;
 }
 .ap-switcher__color-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -1537,7 +1538,7 @@ watch(() => prefs.value.themeAutosave, (on) => {
 .ap-lab__swatch {
   position: relative;
   display: flex; align-items: center; gap: 0.45rem;
-  padding: 0.5rem 0.6rem;
+  padding: 0.42rem 0.55rem;
   border: 1.5px solid;
   border-radius: var(--ap-radius, 8px);
   cursor: pointer;

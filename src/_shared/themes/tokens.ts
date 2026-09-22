@@ -201,3 +201,24 @@ export function resolveVariant(v: string | undefined | null): SiteVariant {
 export function variantAtLeast(variant: SiteVariant | string, min: SiteVariant): boolean {
   return VARIANT_RANK[resolveVariant(variant as string)] >= VARIANT_RANK[min]
 }
+
+/**
+ * The single place that decides which tier a site PAID for.
+ *
+ * Distinct from `resolveVariant`, which says how the site is currently laid
+ * out. `Site.plan` has held two kinds of value: catalogue SKU ids from the
+ * initial purchase (`website-extended`) and tier names from the upgrade flow
+ * (`portfolio`). Both must resolve the same way, or an owner who bought
+ * Portfolio outright is shown the Essentials limits they did not pay for.
+ *
+ * Anything unrecognised is Essentials — the tier that grants nothing — so a
+ * typo can never hand out paid capacity.
+ */
+const PORTFOLIO_PLANS = new Set([
+  'portfolio', 'extended', 'premium', 'pro',
+  'website-extended', 'website-premium', 'website-portfolio-upgrade',
+])
+
+export function resolvePlanTier(plan: string | null | undefined): SiteVariant {
+  return PORTFOLIO_PLANS.has((plan ?? '').trim().toLowerCase()) ? 'portfolio' : 'essentials'
+}

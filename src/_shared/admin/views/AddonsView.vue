@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from 'vue'
+import { resolvePlanTier } from '../../themes/tokens'
 import { CalendarClock, BedDouble, ShoppingBag, UtensilsCrossed, Ticket, Sparkles, Check, Bike, ConciergeBell } from 'lucide-vue-next'
 import { contentClient } from '../../platform/contentClient'
 import { useActiveSiteStore } from '../../platform/activeSiteStore'
@@ -47,7 +48,7 @@ async function toggleAddon(id: string) {
 /* Portfolio upgrade */
 const portfolioPaid = computed(() => {
   const plan = (activeSite.value as { plan?: string } | null)?.plan ?? 'essentials'
-  return ['portfolio', 'pro', 'premium', 'extended'].includes(plan)
+  return resolvePlanTier(plan) === 'portfolio'
 })
 const upgrading = ref(false)
 async function upgrade() {

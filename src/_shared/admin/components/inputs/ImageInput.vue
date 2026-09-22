@@ -83,9 +83,10 @@ function onDrop(evt: DragEvent) {
           <button v-if="clearable" type="button" class="ai-img__chip" @click="model = ''">✕ Remove</button>
         </div>
       </template>
-      <div v-else class="ai-img__cta">
+      <div v-else class="ai-img__cta" title="Upload a photo: click or drag one in">
         <ImagePlus :size="20" />
-        <span><strong>Upload a photo</strong> — click or drag &amp; drop</span>
+        <span class="ai-img__cta-long"><strong>Upload a photo</strong> or drag one in</span>
+        <span class="ai-img__cta-short">Add photo</span>
       </div>
       <div v-if="uploading" class="ai-img__busy">Uploading…</div>
     </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { resolvePlanTier } from '../../themes/tokens'
 import { RouterLink } from 'vue-router'
 import { MapPin, Sparkles } from 'lucide-vue-next'
 import { contentClient } from '../../platform/contentClient'
@@ -25,7 +26,7 @@ const archetype = computed(() => activeSite.value?.archetype ?? 'mesa')
 /** Paid tier: the plan the site was BOUGHT on, from the sites list. */
 const portfolioPaid = computed(() => {
   const plan = (activeSite.value as { plan?: string } | null)?.plan ?? 'essentials'
-  return ['portfolio', 'pro', 'premium', 'extended'].includes(plan)
+  return resolvePlanTier(plan) === 'portfolio'
 })
 
 const ESSENTIALS_SLOTS = 8

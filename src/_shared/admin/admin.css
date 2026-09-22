@@ -531,6 +531,22 @@ html.ap-admin-open, html.ap-admin-open body {
   padding: 0.9rem; text-align: center;
 }
 .ai-img__cta svg { color: var(--adm-text-muted); }
+/* The empty state adapts to the slot it sits in. In a thumbnail-sized cell
+   the full sentence wraps word-by-word into a tall sliver (the menu editor's
+   squashed drop zones), so narrow slots fall back to a two-word label, and
+   the tightest ones to the icon alone in a square. The full wording moves to
+   the tooltip either way. */
+.ai-img { container-type: inline-size; }
+.ai-img__cta-short { display: none; }
+@container (max-width: 220px) {
+  .ai-img__cta-long { display: none; }
+  .ai-img__cta-short { display: block; }
+  .ai-img--empty { min-height: 0; aspect-ratio: 1 / 1; }
+  .ai-img__cta { padding: 0.4rem; gap: 0.2rem; }
+}
+@container (max-width: 110px) {
+  .ai-img__cta-short { display: none; }
+}
 .ai-img__preview { position: relative; aspect-ratio: 16 / 9; }
 .ai-img__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* Image action chips are ALWAYS visible (not hover-gated) and wrap instead

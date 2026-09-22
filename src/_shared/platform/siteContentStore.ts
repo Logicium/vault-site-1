@@ -6,6 +6,7 @@
  * config is used unchanged — so the site never breaks.
  */
 import { defineStore } from 'pinia'
+import { resolvePlanTier } from '../themes/tokens'
 import { ref, computed, watch } from 'vue'
 import { contentClient } from './contentClient'
 import { PLATFORM_ENABLED, PLATFORM_SITE_KEY, PLATFORM_SITE_ID, PLATFORM_SLUG, DEMO_MODE } from './config'
@@ -91,7 +92,7 @@ export const useSiteContentStore = defineStore('siteContent', () => {
   const portfolioUnlocked = computed<boolean>(() => {
     if (DEMO_MODE || !PLATFORM_ENABLED) return true
     if (plan.value === null) return true // hydration pending/failed: never lock the owner out
-    return ['portfolio', 'pro', 'premium', 'extended'].includes(plan.value)
+    return resolvePlanTier(plan.value) === 'portfolio'
   })
 
   const isPlatform = computed(() => PLATFORM_ENABLED && !!PLATFORM_SITE_KEY)

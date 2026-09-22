@@ -108,6 +108,10 @@ const demoMenu = [
   { id: 'demo-m5', sku: 'MN-03', name: 'Mushroom Pozole', description: 'Hominy, guajillo broth, all the fixings. Vegan.', priceCents: 1600, category: 'Mains', imageUrl: IMG('photo-1547592180-85f173990554'), active: true, sortOrder: 5 },
   { id: 'demo-m6', sku: 'DS-01', name: 'Sopapillas & Honey', description: 'Fried to order, local honey, cinnamon sugar.', priceCents: 700, category: 'Desserts', imageUrl: IMG('photo-1551024601-bec78aea704b'), active: true, sortOrder: 6 },
   { id: 'demo-m7', sku: 'DR-01', name: 'Prickly Pear Agua Fresca', description: 'House-made, not too sweet.', priceCents: 450, category: 'Drinks', imageUrl: IMG('photo-1544145945-f90425340c7e'), active: true, sortOrder: 7 },
+  // One dish in two sizes: shows size grouping in the demo, and exercises the
+  // path that collapses legacy per-size items into one card with size buttons.
+  { id: 'demo-m8', sku: 'MN-04', name: 'Green Chile Stew (Cup)', description: 'Pork, potatoes, plenty of Hatch.', priceCents: 700, category: 'Mains', imageUrl: IMG('photo-1583224944844-5b268c057b72'), active: true, sortOrder: 8 },
+  { id: 'demo-m9', sku: 'MN-05', name: 'Green Chile Stew (Bowl)', description: '', priceCents: 1100, category: 'Mains', imageUrl: IMG('photo-1583224944844-5b268c057b72'), active: true, sortOrder: 9 },
 ]
 
 // ── Lodging (Hearth · Reservations add-on) ───────────────────────────────
