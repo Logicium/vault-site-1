@@ -19,7 +19,10 @@ export interface Product {
   url?: string
 }
 
-export interface Category { name: string; image: string; imageAlt?: string; url?: string; count?: number }
+/** A product category tile. `children` are its subcategories, shown in the
+ *  catalog nav dropdown and used to deep-link the shop (`/shop?category=…&sub=…`). */
+export interface CategoryChild { name: string; url?: string }
+export interface Category { name: string; image: string; imageAlt?: string; url?: string; count?: number; children?: CategoryChild[] }
 
 export interface VaultSiteConfig {
   brand: string
@@ -34,6 +37,8 @@ export interface VaultSiteConfig {
   story: { title: string; paragraphs: string[]; facts?: Array<{ label: string; value: string }> }
   featured: Product[]
   categories: Category[]
+  /** Header menu for the shop: plain links, or a catalog dropdown built from `categories`. */
+  navMenu?: 'links' | 'catalog'
   testimonials: Array<{ quote: string; author: string; source?: string }>
   shopUrl: string
   social: Array<{ label: string; href: string }>
@@ -64,7 +69,7 @@ export const siteConfig: VaultSiteConfig = reactive(({
   blurb: 'Hand-picked apparel, home goods, and gifts from makers across the Southwest.',
   theme: 'vibrant',
   swatch: 'riot-light',
-  variant: 'essentials',
+  variant: 'portfolio',
   contact: {
     address: '305 Main St, Trinidad, CO 81082',
     phone: '(719) 555-0125',
@@ -81,7 +86,7 @@ export const siteConfig: VaultSiteConfig = reactive(({
     { day: 'Sunday', open: '11:00 – 4:00' },
   ],
   photos: {
-    hero: { src: '/photos/hero.jpg', alt: 'Hero product flat lay' },
+    hero: { src: '/photos/hero.jpg', alt: 'The shop window on Main Street' },
     about: { src: '/photos/about-shop.jpg', alt: 'Inside the shop' },
     storefront: { src: '/photos/storefront.jpg', alt: 'Storefront on Main' },
     gallery: [
@@ -91,6 +96,16 @@ export const siteConfig: VaultSiteConfig = reactive(({
       { src: '/photos/interior-01.jpg', alt: 'Shelving' },
       { src: '/photos/interior-02.jpg', alt: 'Counter' },
       { src: '/photos/lifestyle-01.jpg', alt: 'Goods in use' },
+      { src: '/photos/gallery-07.jpg', alt: 'Stoneware from the valley' },
+      { src: '/photos/gallery-08.jpg', alt: 'Workwear rack' },
+      { src: '/photos/gallery-09.jpg', alt: 'Hand-poured candles' },
+      { src: '/photos/gallery-10.jpg', alt: 'Wool blankets' },
+      { src: '/photos/gallery-11.jpg', alt: 'Window, Main Street' },
+      { src: '/photos/gallery-12.jpg', alt: 'Leather goods' },
+      { src: '/photos/gallery-13.jpg', alt: 'Plants by the door' },
+      { src: '/photos/gallery-14.jpg', alt: 'Records, back wall' },
+      { src: '/photos/gallery-15.jpg', alt: 'Wrapped at the counter' },
+      { src: '/photos/gallery-16.jpg', alt: 'Pantry shelf' },
     ],
   },
   story: {
@@ -112,9 +127,11 @@ export const siteConfig: VaultSiteConfig = reactive(({
     { name: 'Field notebook', price: '$18', image: '/photos/product-04.jpg', blurb: 'Letterpress cover', badge: 'Local', url: '/shop' },
   ],
   categories: [
-    { name: 'Apparel', image: '/photos/cat-apparel.jpg', count: 32, url: '/shop' },
-    { name: 'Home', image: '/photos/cat-home.jpg', count: 41, url: '/shop' },
-    { name: 'Pantry', image: '/photos/cat-pantry.jpg', count: 18, url: '/shop' },
+    { name: 'Apparel', image: '/photos/cat-apparel.jpg', count: 32, url: '/shop?category=apparel',
+      children: [{ name: 'Tops' }, { name: 'Bags' }] },
+    { name: 'Home', image: '/photos/cat-home.jpg', count: 41, url: '/shop?category=home',
+      children: [{ name: 'Candles' }, { name: 'Kitchen' }, { name: 'Art' }, { name: 'Bath' }] },
+    { name: 'Pantry', image: '/photos/cat-pantry.jpg', count: 18, url: '/shop?category=pantry' },
     { name: 'Gifts', image: '/photos/cat-gifts.jpg', count: 27, url: '/shop' },
   ],
   testimonials: [
